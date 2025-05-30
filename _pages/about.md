@@ -7,7 +7,7 @@ redirect_from:
   - /about.html
 ---
 
-I am **Qifei Cui**, a candidate for the Master of Science in Engineering (M.S.E.) in **Systems Engineering** at the **University of Pennsylvania**, expecting to graduate in **June 2026**. I am passionate about developing intelligent systems that can perceive, understand, and interact with the world in sophisticated ways. My research interests lie at the intersection of **computer vision**, **Vision‑Language‑Action (VLA) models**, **robot control**, and **recommendation systems**.
+I am **Qifei**, a candidate for the Master of Science in Engineering (M.S.E.) in **Systems Engineering** at the **University of Pennsylvania**, expecting to graduate in **June 2026**. I am passionate about developing intelligent systems that can perceive, understand, and interact with the world in sophisticated ways. My research interests lie at the intersection of **computer vision**, **Vision‑Language‑Action (VLA) models**, **robot control**, and **recommendation systems**.
 
 Under the supervision of **Prof. Pratik Chaudhari**, I have worked on projects spanning humanoid robotics and medical image analysis. My goal is to contribute to autonomous agents that integrate visual understanding, language comprehension, and precise physical actions. In the realm of recommendation systems, I focus on the cold‑start problem and enhancing model adaptability.
 
