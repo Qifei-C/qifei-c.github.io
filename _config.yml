@@ -25,7 +25,7 @@ author:
   avatar           : "profile.png"
   name             : "Qifei C."
   pronouns         : "he/his"  
-  bio              : "My research focuses on advancing artificial intelligence and machine learning, with applications in areas such as recommendation systems, medical image analysis, and computer vision."
+  bio              : "My research focuses on advancing artificial intelligence and machine learning, with applications in computer vision, Vision-Language-Action (VLA) models, robot control, and recommendation systems."
   location         : "Philadelphia, PA, US"
   employer         : "University of Pennsylvania"
   uri              : # URL
@@ -38,13 +38,13 @@ author:
   
 
   # Repositories and software development
-  github           : "https://github.com/Qifei-C"
+  github           : "Qifei-C"
 
 
   # Social media
   instagram        : "qifei1029"
   linkedin         : "qifei"
-  youtube          : "@Qifei-w4b"
+  youtube          : "Qifei-w4b"
 
 # Publication Category - The following the list of publication categories and their headings
 publication_category:
@@ -89,7 +89,7 @@ staticman:
       options:
         format           : "iso8601" # "iso8601" (default), "timestamp-seconds", "timestamp-milliseconds"
 atom_feed:
-  hide                   : false     # change to true to hide the RSS feed in the footer
+  hide                   : true     # change to true to hide the RSS feed in the footer
   path                   : # blank (default) uses feed.xml
 
 
