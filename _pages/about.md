@@ -1,6 +1,6 @@
 ---
 permalink: /
-title: "Qifei Cui"
+title: "About"
 author_profile: true
 redirect_from: 
   - /about/
@@ -9,9 +9,7 @@ redirect_from:
 
  **Systems Engineering  MSE @ UPenn**
 
-I’m a second-year master’s student building **intelligent agents that see, think, and act**. 
-
-Guided by *Prof. Pratik Chaudhari*, I explore how vision-language models and safe reinforcement learning can drive humanoid arms and assistive robots. Before Penn, I earned dual B.S. degrees in Applied Mathematics and in Statistics & Data Science at UC Santa Barbara, where a solid grounding in mathematics and probability laid the foundation for my current research in embodied AI and safe reinforcement learning. 
+I’m a second-year master’s student building **intelligent agents that see, think, and act**. Guided by *Prof. Pratik Chaudhari*, I explore how vision-language models and safe reinforcement learning can drive humanoid arms and assistive robots. Before Penn, I earned dual B.S. degrees in Applied Mathematics and in Statistics & Data Science at UC Santa Barbara, where a solid grounding in mathematics and probability laid the foundation for my current research in embodied AI and safe reinforcement learning. 
 
 My broader goal is to bridge perception, language, and precise physical control so that machines collaborate naturally with people.
 
