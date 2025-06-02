@@ -7,11 +7,11 @@ redirect_from:
   - /about.html
 ---
 
- **Systems Engineering  MSE @ UPenn**
+I'm Qifei, a second-year master's student dedicated to developing intelligent systems that empower robots with robust perception, language comprehension, and precise physical actions. Under the supervision of *Prof. Pratik Chaudhari*, my research integrates Vision-Language-Action (VLA) models and safe reinforcement learning methodologies to enhance humanoid arm control and assistive robotics. 
 
-I’m a second-year master’s student building **intelligent agents that see, think, and act**. Guided by *Prof. Pratik Chaudhari*, I explore how vision-language models and safe reinforcement learning can drive humanoid arms and assistive robots. Before Penn, I earned dual B.S. degrees in Applied Mathematics and in Statistics & Data Science at UC Santa Barbara, where a solid grounding in mathematics and probability laid the foundation for my current research in embodied AI and safe reinforcement learning. 
+Before joining Penn, I obtained dual B.S. degrees in Applied Mathematics and Statistics & Data Science from UC Santa Barbara. This strong foundation in mathematical analysis and probabilistic modeling supports my ongoing research in embodied artificial intelligence and safe robot control.
 
-My broader goal is to bridge perception, language, and precise physical control so that machines collaborate naturally with people.
+My broader aim is to enable robots to naturally understand and effectively collaborate with humans in real-world scenarios, building **intelligent agents that see, think, and act**
 
 ## Research Interests
 - Embodied Vision-Language-Action (VLA) models  
@@ -22,7 +22,6 @@ My broader goal is to bridge perception, language, and precise physical control 
 
 |---|---|
 | **Program** | MSE. in Systems Engineering, University of Pennsylvania (’26) |
-| **Advisor** | Prof. Hamed Hassani |
 | **Location** | Philadelphia, PA, USA |
 | **GPA** | 4.00 / 4.00 |
 | **Email** | [qifei@seas.upenn.edu](mailto:qifei@seas.upenn.edu) |
