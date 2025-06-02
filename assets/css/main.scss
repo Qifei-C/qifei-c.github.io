@@ -41,3 +41,15 @@
     "vendor/font-awesome/brands",
     "vendor/magnific-popup/magnific-popup"
 ;
+
+.page__content p b, .page__content li b,
+article p b, article li b {
+  html[data-bionic-reading="enabled"] & {
+    font-weight: 700;
+    color: var(--bionic-reading-text-color);
+  }
+}
+
+strong, b {
+  font-weight: 900;
+}
