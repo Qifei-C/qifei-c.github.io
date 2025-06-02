@@ -32,7 +32,7 @@ I will serve as a graduate TA for ESE 6500 in Spring 2026.
 4. **Be kind.**  
     Everyone’s here to learn—patience and respect go a long way.
 
-### Q & A Outside Office Hours
+### Q&A Outside Office Hours
 
 We’ll use **Ed Discussion** for async questions. You could find it in Canvas under *"Ed Discussion"* on t he left sidebar. Please search before posting to avoid duplicates.
 

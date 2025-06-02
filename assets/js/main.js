@@ -8,6 +8,9 @@ $(document).ready(function () {
     ? 'dark'
     : 'light';
 
+  const bionicSelectors = '.page__content p, .page__content li, article p, article li';
+  const originalContentMap = new Map();
+  
   // Set the theme on page load or when explicitly called
   var setTheme = function (theme) {
     const use_theme =
@@ -68,7 +71,7 @@ $(document).ready(function () {
   }, 250);
 
   // FitVids init
-  fitvids();
+  $(".page__content, article").fitVids();
 
   // Follow menu drop down
   $(".author__urls-wrapper button").on("click", function () {
@@ -140,43 +143,95 @@ $(document).ready(function () {
     midClick: true // allow opening popup on middle mouse click. Always set it to true if you don't provide alternative source.
   });
 
-  // Bionic Reading using text-vide
-  function applyBionicReadingToElements(selector) {
-    $(selector).each(function() {
+  function applyBionicToElementInternal(element) {
+    if ($(element).closest('pre, code, .highlight, a').length > 0 || $(element).data('bionic-applied') === 'true') {
+      return;
+    }
+
+    const childNodes = $(element).contents();
+    let newHTML = '';
+
+    childNodes.each(function() {
+      if (this.nodeType === 3) { // Node.TEXT_NODE
+        if (this.nodeValue.trim() !== '') {
+          newHTML += textVide.textVide(this.nodeValue);
+        } else {
+          newHTML += this.nodeValue;
+        }
+      } else {
+        newHTML += $(this).prop('outerHTML');
+      }
+    });
+
+    $(element).html(newHTML);
+    $(element).data('bionic-applied', 'true');
+  }
+
+  function storeOriginalContent(elements) {
+    $(elements).each(function() {
       const element = $(this);
-      // Avoid processing elements within code blocks, preformatted text, links, or already processed.
-      if (element.closest('pre, code, .highlight, a, [data-bionic="true"]').length === 0) {
-        const originalHTML = element.html(); // Get HTML to preserve existing tags like <em>, <a> etc.
-
-        // We need to traverse text nodes to apply bionic reading
-        // This is a more complex task if we want to preserve internal HTML tags
-        // textVide.textVide() itself expects a plain text string and returns HTML.
-        // Applying it directly to element.text() and then element.html() would strip inner tags.
-
-        // A robust way is to iterate over text nodes:
-        let newHTML = '';
-        const childNodes = element.contents();
-
-        childNodes.each(function() {
-          if (this.nodeType === 3) { // Node.TEXT_NODE
-            newHTML += textVide.textVide(this.nodeValue);
-          } else {
-            // For element nodes, we get their outer HTML.
-            // If you want to recursively apply bionic reading to nested elements' text nodes:
-            // you might need a more sophisticated recursive function or applyBionicReadingToElements($(this))
-            // For now, let's assume we only process direct text children of the selected elements.
-            newHTML += this.outerHTML || $(this).html();
-          }
-        });
-
-        element.html(newHTML);
-        element.attr('data-bionic', 'true'); // Mark as processed to avoid reprocessing
+      if (!originalContentMap.has(element[0])) { // Ensure we only store it once
+        originalContentMap.set(element[0], element.html());
       }
     });
   }
 
-  // Apply bionic reading to paragraphs and list items within the main content area.
-  // Adjust these selectors to best fit your site's structure.
-  // Common selectors for Jekyll themes like yours might be:
-  applyBionicReadingToElements('.page__content p, .page__content li, article p, article li');
+  function applyBionicReadingToPage() {
+    if (originalContentMap.size === 0) {
+        $(bionicSelectors).each(function() {
+            storeOriginalContent(this);
+        });
+    }
+
+    $(bionicSelectors).each(function() {
+      if (originalContentMap.has(this)) {
+          applyBionicToElementInternal(this);
+      }
+    });
+    console.log("Bionic Reading Applied");
+  }
+
+  function revertBionicReadingOnPage() {
+    $(bionicSelectors).each(function() {
+      const element = $(this);
+      if (originalContentMap.has(element[0]) && element.data('bionic-applied') === 'true') {
+        element.html(originalContentMap.get(element[0]));
+        element.data('bionic-applied', 'false');
+      }
+    });
+    console.log("Bionic Reading Reverted");
+  }
+
+  var setBionicReading = function (status) {
+    if (status === "enabled") {
+      applyBionicReadingToPage();
+      $("html").attr("data-bionic-reading", "enabled");
+      $("#bionic-reading-toggle").addClass("active"); 
+      localStorage.setItem("bionicReading", "enabled");
+    } else { // "disabled"
+      revertBionicReadingOnPage();
+      $("html").attr("data-bionic-reading", "disabled"); 
+      $("#bionic-reading-toggle").removeClass("active");
+      localStorage.setItem("bionicReading", "disabled");
+    }
+  };
+
+  $(bionicSelectors).each(function() {
+      storeOriginalContent(this);
+  });
+ 
+  const currentBionicPref = localStorage.getItem("bionicReading");
+  if (currentBionicPref === "enabled") {
+    setBionicReading("enabled");
+  } else {
+    setBionicReading("disabled"); 
+  }
+
+  var toggleBionicReading = function () {
+    const currentStatus = $("html").attr("data-bionic-reading");
+    const newStatus = currentStatus === "enabled" ? "disabled" : "enabled";
+    setBionicReading(newStatus);
+  };
+
+  $('#bionic-reading-toggle').on('click', toggleBionicReading);
 });
