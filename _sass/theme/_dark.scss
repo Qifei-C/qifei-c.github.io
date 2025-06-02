@@ -51,5 +51,5 @@ html[data-theme="dark"] {
     --global-text-color                 : #{$text};
     --global-text-color-light           : #{$light-gray};
     --global-thead-color                : #{$background-lighter};
-    --bionic-reading-text-color         : #{mix(#fff, $dark-white, 90%)};
+    --bionic-reading-text-color         : #{mix(#fff, $light-gray, 100%)};
 }
