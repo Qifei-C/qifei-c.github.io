@@ -38,7 +38,17 @@
       <p class="page__meta"><i class="fa fa-clock" aria-hidden="true"></i> {% include read-time.html %}</p>
     {% endif %}
 
-        {% if post.collection == 'teaching' %}
+        {% if post.status == 'recent' %}
+          <p>Currently ongoing research (not yet published)</p>
+        {% elsif post.status == 'unpublished' %}
+          <p>
+            Work in progress. 
+            {% if post.venue %}<em>{{ post.venue }}</em>, {% endif %}
+            {% if post.paperurl %}
+              <a href="{{ post.paperurl }}">Download Unofficial Paper</a>
+            {% endif %}
+          </p>
+        {% elsif post.collection == 'teaching' %}
           <p> {{ post.type }}, <i>{{ post.venue }}</i>, {{ post.date | default: "1900-01-01" | date: "%Y" }} </p>
         {% elsif post.collection == 'research' %}
           <p>Published in <i>{{ post.venue }}</i>, {{ post.date | default: "1900-01-01" | date: "%Y" }} </p>
@@ -70,7 +80,7 @@
       <p>Recommended citation: {{ post.citation }}</p>
     {% elsif post.paperurl and post.bibtexurl %}
       <p><a href=" {{ post.paperurl }} ">Download Paper</a> | <a href="{{ post.bibtexurl }}">Download Bibtex</a></p>
-    {% elsif post.paperurl %}
+    {% elsif post.paperurl and post..status != 'unpublished'%}
       <p><a href=" {{ post.paperurl }} ">Download Paper</a></p>
     {% elsif post.slidesurl and post.bibtexurl %}
       <p><a href="{{ post.slidesurl }}">Download Slides</a> | <a href="{{ post.bibtexurl }}">Download Bibtex</a></p>

@@ -31,7 +31,7 @@ publist = {
         "venuekey": "booktitle",
         "venue-pretext": "In the proceedings of ",
         "collection" : {"name":"research",
-                        "permalink":"/publication/"}
+                        "permalink":"/research/"}
         
     },
     "journal":{
@@ -39,7 +39,7 @@ publist = {
         "venuekey" : "journal",
         "venue-pretext" : "",
         "collection" : {"name":"research",
-                        "permalink":"/publication/"}
+                        "permalink":"/research/"}
     } 
 }
 

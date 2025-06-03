@@ -46,14 +46,18 @@ author:
   linkedin         : "qifei"
   youtube          : "Qifei-w4b"
 
-# Publication Category - The following the list of publication categories and their headings
-publication_category:
+# Research Category - The following the list of research categories and their headings
+research_category:
+  recent:
+    title: 'Recent Works'
   books:
     title: 'Books'
   manuscripts:
     title: 'Journal Articles'    
   conferences:
     title: 'Conference Papers'
+  
+  
 
 # Site Settings
 teaser                   :  # filename of teaser fallback teaser image placed in /images/, .e.g. "500x300.png"
@@ -128,6 +132,7 @@ include:
   - .htaccess
   - _pages
   - files
+  - assets/js/plugins
 exclude:
   - "*.sublime-project"
   - "*.sublime-workspace"
@@ -137,7 +142,6 @@ exclude:
   - .jekyll-assets-cache
   - .sass-cache
   - assets/js/_main.js
-  - assets/js/plugins
   - assets/js/vendor
   - CHANGELOG
   - Capfile
@@ -194,6 +198,9 @@ collections:
     output: true
     permalink: /:collection/:path/
   experience:
+    output: true
+    permalink: /:collection/:path/
+  recent:
     output: true
     permalink: /:collection/:path/
 
