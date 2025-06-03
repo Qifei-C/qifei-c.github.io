@@ -1,0 +1,39 @@
+/* ===================================================================
+   Bionic Reading — variable-font weight tween
+   =================================================================== */
+
+/* 2-A 共享变量 —— 全站只需一次 */
+/* ===================================================================
+   Bionic Reading — smooth weight tween (no CSS var on font-weight)
+   =================================================================== */
+
+:root { --bionic-time: 500ms; }  /* 你仍可把时长做成变量 */
+
+/* 强行把 Markdown 粗体（<strong>）钉在 800，并且禁用过渡 */
+[data-bionic-applied] strong                                 { font-weight: 700 !important; transition: none !important; }
+html[data-bionic-reading="enabled"] [data-bionic-applied] strong { font-weight: 700 !important; transition: none !important; }
+
+/* 0. 共同的过渡 */
+[data-bionic-applied]
+[data-bionic-applied]{
+  overflow-wrap: normal;   /* 新规范写法 */
+  word-break   : keep-all; /* 旧浏览器回退 */
+}
+
+[data-bionic-applied] b {
+  transition: font-weight var(--bionic-time) cubic-bezier(.4,0,.2,1);
+  will-change: font-weight;          /* 提前把轴放到合成层，更顺滑 */
+}
+
+/* 1. 关闭状态：正文 400 / 粗体 700 */
+[data-bionic-applied]     { font-weight: 400; }
+[data-bionic-applied] b   { font-weight: 400; }
+
+/* 2. 开启状态：正文 200 / 粗体 950 */
+html[data-bionic-reading="enabled"] {
+  /* 这里直接改元素，不用 var() */
+  [data-bionic-applied]   { font-weight: 300;  }
+  [data-bionic-applied] b { font-weight: 650;  }  /* 900–1000 都可以 */
+}
+
+

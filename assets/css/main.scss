@@ -39,19 +39,8 @@
     "vendor/font-awesome/fontawesome",
     "vendor/font-awesome/solid",
     "vendor/font-awesome/brands",
-    "vendor/magnific-popup/magnific-popup"
+    "vendor/magnific-popup/magnific-popup",
+
+    "custom"
 ;
 
-
-.page__content p, .page__content li,
-article p, article li {
-  html[data-bionic-reading="enabled"] & {
-    font-weight: 300;
-    color: var(--bionic-reading-text-color);
-  }
-}
-
-
-strong, b {
-  font-weight: 700;
-}

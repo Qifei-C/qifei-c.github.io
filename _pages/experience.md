@@ -3,7 +3,10 @@ layout: archive
 title: "Experience"
 permalink: /experience/
 author_profile: true
+redirect_from: 
+  - /experience.html
 ---
+
 
 ## Education
 
@@ -33,15 +36,15 @@ author_profile: true
 
 ## Work Experience
 
-### Intern in Data Analytics
-**Alphabet Inc.** *Mountain View, CA* Mar 2023 – Jun 2023
+### Intern in Data Analytics @ Alphabet Inc.
+*Mountain View, CA* Mar 2023 – Jun 2023
 
 * Implemented efficient pipelines for preprocessing large datasets with 1m lines and ensured data integrity. Developed a double-tower recommendation model adapted from recent Recommendation System research papers with Recall@10 of 78.2%. Built real-world simulation with a node.js based App interface that generate movie suggestions with detailed information for registered user.
 * Engineered new embeddings by analyzing user-item interaction data based on statistical distributions. Applied different levels to varying lengths of watching history, resulting in a 2.3% increase in benchmark accuracy. Achieved an accuracy of 79.3% on Recall10, demonstrating effective learning and robust generalization.
 
 
-### Intern K-12 Teacher (Full-Time)
-**United World College** *Changshu, China*  September 2021 – June 2022
+### Intern K-12 Teacher (Full-Time) @ United World College
+*Changshu, China*  September 2021 – June 2022
 
 * IB Mathematics: Analysis & Approaches SL (Grade 11). Planned and delivered inquiry-driven lessons, formative assessments, and exam-style tasks aligned with the International Baccalaureate Diploma Programme objectives.
 * Pre-IB Physics (Grade 10). Taught core mechanics, waves, and electricity units; designed hands-on laboratory activities and scaffolded problem-solving skills to prepare students for DP Physics.
