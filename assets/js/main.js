@@ -143,106 +143,38 @@ $(document).ready(function () {
   });
 
   // const bionicSelectors = 'h1, h2, h3, p, li, .content p, .content li, .content div, .content span, .page__content p, .page__content li, .page__content div, .page__content span, .page__content ol, article p, article li, article div, article span, article p, article li, article div, article span';
-  const bionicSelectors = 'h1, h2, h3, p, li';
-  const BIONIC_DELTA_WEIGHT     = 200;  // 每个 <b> 额外加粗值
-  const BIONIC_MAX_WEIGHT       = 900;  // 加粗上限
-  const BIONIC_COLOR_SHIFT      = -1;    // 若想微调颜色设 0–1；完全不调色就保持 0
-
-  /* ---------- 缓存 ---------- */
-  const originalContentMap = new Map();   // 保存启用前的原始 HTML
-  const originalWeightMap  = new WeakMap();
-  const originalColorMap   = new WeakMap();
+  const bionicSelectors = '.page__content p, .page__content li, .article p, .article li, .archive p, .archive li';
 
   /* ---------- 1. 把纯文本节点替换为加粗前缀 ---------- */
   function applyBionicToElementInternal(el) {
     const $el = $(el);
     if (
       $el.closest('pre, code, .highlight, a').length ||
-      $el.data('bionic-applied') === 'true'
+      $el.data('bionic-applied') === 'true' ||
+      window.getComputedStyle(el).fontStyle === 'italic' ||  // 跳过斜体
+      el.tagName === 'STRONG'
     ) return;
 
-    if (window.getComputedStyle(el).fontStyle === 'italic') return;
-
     $el.contents().each(function () {
-      if (this.nodeType === 3) {                              // 文本
+      if (this.nodeType === 3) {               // 纯文本
         const txt = this.nodeValue;
         if (txt.trim()) $(this).replaceWith(textVide.textVide(txt));
-      } else {                                                // 元素，递归
+      } else {                                 // 继续递归
         applyBionicToElementInternal(this);
       }
     });
 
-    $el.data('bionic-applied', 'true');
+    $el.attr('data-bionic-applied', 'true');        // 供 CSS 识别
   }
 
-  /* ---------- 2. 加粗 / 恢复 <b> 字重 ---------- */
-  function boostWeight(node, delta = BIONIC_DELTA_WEIGHT) {
-    let w = window.getComputedStyle(node).fontWeight;
-    if (w === 'normal') w = 400;
-    else if (w === 'bold') w = 700;
-    else w = parseInt(w, 10);
-
-    if (!isNaN(w)) {
-      originalWeightMap.set(node, w);
-      node.style.fontWeight = Math.min(w + delta, BIONIC_MAX_WEIGHT);
-    }
-  }
-
-  function restoreWeight(node) {
-    if (originalWeightMap.has(node)) {
-      node.style.fontWeight = originalWeightMap.get(node);
-    } else {
-      node.style.removeProperty('font-weight');
-    }
-  }
-
-  /* ---------- 3. （可选）颜色微调 ---------- */
-  function shiftColor(node, ratio = BIONIC_COLOR_SHIFT) {
-    if (ratio === 0) return;
-
-    const col = window.getComputedStyle(node).color;                // rgb(r,g,b)
-    const m = col.match(/\d+/g);
-    if (!m) return;
-    const [r, g, b] = m.map(Number);
-
-    // 背景简单判断：亮背景 → 往黑走；暗背景 → 往白走
-    const toward = (r + g + b) > 382 ? 0 : 255;
-    const newRGB = [r, g, b].map(v =>
-      Math.round(v * (1 - ratio) + toward * ratio)
-    );
-    originalColorMap.set(node, col);
-    node.style.color = `rgb(${newRGB.join(',')})`;
-  }
-
-  function restoreColor(node) {
-    if (originalColorMap.has(node)) {
-      node.style.color = originalColorMap.get(node);
-    } else {
-      node.style.removeProperty('color');
-    }
-  }
-
-  /* ---------- 4. 批量应用 / 恢复 Tweaks ---------- */
-  function applyBionicTweaks() {
-    $('html[data-bionic-reading="enabled"] b').each(function () {
-      boostWeight(this);
-      shiftColor(this);
-    });
-  }
-
-  function revertBionicTweaks() {
-    $('b').each(function () {
-      restoreWeight(this);
-      restoreColor(this);
-    });
-  }
-
-  /* ---------- 5. 首次存档原文 ---------- */
+  /* ---------- 2. 记录原始 HTML，用于撤销 ---------- */
+  const originalContentMap = new Map();
   $(bionicSelectors).each(function () {
-    if (!originalContentMap.has(this)) originalContentMap.set(this, $(this).html());
+    if (!originalContentMap.has(this))
+      originalContentMap.set(this, $(this).html());
   });
 
-  /* ---------- 6. 应用 & 撤销 ---------- */
+  /* ---------- 3. 应用 & 撤销 ---------- */
   function applyBionicReadingToPage() {
     $(bionicSelectors).each(function () {
       applyBionicToElementInternal(this);
@@ -254,32 +186,42 @@ $(document).ready(function () {
     $(bionicSelectors).each(function () {
       if (originalContentMap.has(this)) {
         $(this).html(originalContentMap.get(this))
-              .data('bionic-applied', 'false');
+              .removeAttr('data-bionic-applied');
       }
     });
     console.log('Bionic Reading Reverted');
   }
 
-  /* ---------- 7. 开关入口 ---------- */
+  /* ---------- 4. 开关入口（CSS 负责动画） ---------- */
   function setBionicReading(status) {
     if (status === 'enabled') {
       applyBionicReadingToPage();
-      applyBionicTweaks();
       $('html').attr('data-bionic-reading', 'enabled');
       $('#bionic-reading-toggle').addClass('active');
       localStorage.setItem('bionicReading', 'enabled');
     } else {
-      revertBionicReadingOnPage();
-      revertBionicTweaks();
       $('html').attr('data-bionic-reading', 'disabled');
+      const cssTime = getComputedStyle(document.documentElement)
+                     .getPropertyValue('--bionic-time')
+                     .trim() || '500ms';
+
+      /* 把 "500ms" / "0.35s" 转成毫秒数 */
+      const timeMs = cssTime.endsWith('ms')
+        ? parseFloat(cssTime)
+        : parseFloat(cssTime) * 1000;
+
+      setTimeout(() => {
+        revertBionicReadingOnPage();                     // 现在才还原
+      }, timeMs);
       $('#bionic-reading-toggle').removeClass('active');
       localStorage.setItem('bionicReading', 'disabled');
     }
   }
 
-  /* ---------- 8. 初始化 & 绑定 ---------- */
-  const currentBionicPref = localStorage.getItem('bionicReading');
-  setBionicReading(currentBionicPref === 'enabled' ? 'enabled' : 'disabled');
+  /* ---------- 5. 初始化 & 绑定 ---------- */
+  setBionicReading(
+    localStorage.getItem('bionicReading') === 'enabled' ? 'enabled' : 'disabled'
+  );
 
   $('#bionic-reading-toggle').on('click', () => {
     const cur = $('html').attr('data-bionic-reading');
