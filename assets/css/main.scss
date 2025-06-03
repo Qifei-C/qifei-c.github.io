@@ -42,14 +42,16 @@
     "vendor/magnific-popup/magnific-popup"
 ;
 
-.page__content p b, .page__content li b,
-article p b, article li b {
+
+.page__content p, .page__content li,
+article p, article li {
   html[data-bionic-reading="enabled"] & {
-    font-weight: 700;
+    font-weight: 300;
     color: var(--bionic-reading-text-color);
   }
 }
 
+
 strong, b {
-  font-weight: 900;
+  font-weight: 700;
 }
