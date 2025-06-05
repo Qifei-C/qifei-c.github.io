@@ -31,7 +31,7 @@ My broader aim is to enable robots to naturally understand and effectively colla
 ---
 
 <div align="center">
-  👉  Check my latest projects <strong><a href="/projects/">here</a></strong>, or grab my <a href="/files/Qifei_Cui_CV.pdf">CV</a>.
+  👉  Check my most-recent research <strong><a href="/research/">here</a></strong>, or grab my <a href="/files/Qifei_CV.pdf">CV</a>.
 </div>
 
  ---
