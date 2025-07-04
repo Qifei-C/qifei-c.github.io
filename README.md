@@ -33,4 +33,4 @@ Python · C++ · PyTorch · TensorFlow · OpenCV · Scikit‑learn · Docker · 
 
 I am always eager to connect with fellow researchers and explore potential collaborations. Feel free to reach out!
 
-You can learn more about my academic and professional journey through my **[CV](/files/Qifei_Cui_CV.pdf)** and explore my projects on **[GitHub](https://github.com/Qifei-C)**.
+You can learn more about my academic and professional journey through my **[CV](/files/Qifei_CV.pdf)** and explore my projects on **[GitHub](https://github.com/Qifei-C)**.
