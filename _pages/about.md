@@ -8,25 +8,36 @@ redirect_from:
   - /about.html
 ---
 
-I'm Qifei, a second-year master's student dedicated to developing intelligent systems that empower robots with robust perception, language comprehension, and precise physical actions. Under the supervision of Prof. Pratik Chaudhari, my research integrates Vision-Language-Action (VLA) models and safe reinforcement learning methodologies to enhance humanoid arm control and assistive robotics. 
+I'm Qifei — a second‑year master’s student focusing on two interconnected areas:
 
-Before joining Penn, I obtained dual B.S. degrees in Applied Mathematics and Statistics & Data Science from UC Santa Barbara. This strong foundation in mathematical analysis and probabilistic modeling supports my ongoing research in embodied artificial intelligence and safe robot control.
+1. Reinforcement Learning (RL) for safe, sample‑efficient decision making across sequential decision domains.
+2. Geometric & Probabilistic Manifold Theory that yields mathematically explainable representations and preserves the intrinsic constraints of motion and multimodal sensor streams.
 
-My broader aim is to enable robots to naturally understand and effectively collaborate with humans in real-world scenarios, building intelligent agents that see, think, and act.
+I pursue AI that understands the hidden geometries of motion and thought — bridging the physical and the abstract through mathematical insight.
 
-## Research Interests
-- Embodied Vision-Language-Action (VLA) models  
-- Manifold-aware learning & optimized control 
-- Graph-based recommender systems (cold-start, adaptability)  
+## Core Research Lines
+
+### Humanoid Arm Motion via Manifold‑Constrained Models
+
+Working with Prof. Pratik Chaudhari, I transfer human upper‑body motion to a 4‑DoF desktop arm.  My HPSTM Transformer learns bone‑length‑preserving manifolds that smooth 3‑D skeleton streams in real time, cutting tele‑operation jitter by ≈ 38 % and lowering end‑effector MPJPE by ≈ 15 % relative to classical Kalman and Savitzky‑Golay filters, all while guaranteeing physically plausible joint trajectories.
+
+### PRISM  (Path Reasoning with Importance Sampling & Multi‑feedback — ongoing)
+
+PRISM  (Path Reasoning with Importance Sampling & Multi‑feedback — ongoing)
+Parallel to my robotics work, I am designing PRISM, a bilevel‑optimised framework that treats knowledge‑graph reasoning paths as RL actions and learns to sample them via importance weighting.  PRISM further incorporates heterogeneous user feedback to refine its path utility estimates, aiming for explainable, real‑time recommendation without hand‑crafted rewards.  The project explores how the same RL‑plus‑manifold philosophy scales from physical embodiment to large‑scale decision systems.
+
+## Background & Vision
+
+I hold dual B.S. degrees in Applied Mathematics and Statistics & Data Science from UC Santa Barbara.  This mathematical grounding supports my long‑term goal: robots and decision systems that naturally understand, safely reason, and seamlessly collaborate with humans in messy, dynamic environments.
 
 ## Quick Facts
 
 |---|---|
-| **Program** | MSE. in Data Science, University of Pennsylvania (’26) |
-| **Location** | Philadelphia, PA, USA |
-| **GPA** | 4.00 / 4.00 |
-| **Email** | [qifei@seas.upenn.edu](mailto:qifei@seas.upenn.edu) |
-| **GitHub** | [Qifei-C](https://github.com/Qifei-C) |
+| Program | MSE. in Data Science, University of Pennsylvania (’26) |
+| Location | Philadelphia, PA, USA |
+| GPA | 4.00 / 4.00 |
+| Email | [qifei@seas.upenn.edu](mailto:qifei@seas.upenn.edu) |
+| GitHub | [Qifei-C](https://github.com/Qifei-C) |
 
 ---
 
