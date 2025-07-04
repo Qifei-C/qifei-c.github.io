@@ -22,7 +22,7 @@ My broader aim is to enable robots to naturally understand and effectively colla
 ## Quick Facts
 
 |---|---|
-| **Program** | MSE. in Systems Engineering, University of Pennsylvania (’26) |
+| **Program** | MSE. in Data Science, University of Pennsylvania (’26) |
 | **Location** | Philadelphia, PA, USA |
 | **GPA** | 4.00 / 4.00 |
 | **Email** | [qifei@seas.upenn.edu](mailto:qifei@seas.upenn.edu) |
