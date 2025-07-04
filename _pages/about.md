@@ -17,14 +17,13 @@ I pursue AI that understands the hidden geometries of motion and thought — bri
 
 ## Core Research Lines
 
-### Humanoid Arm Motion via Manifold‑Constrained Models
+- **Humanoid Arm Motion via Manifold‑Constrained Models**
 
-Working with Prof. Pratik Chaudhari, I transfer human upper‑body motion to a 4‑DoF desktop arm.  My HPSTM Transformer learns bone‑length‑preserving manifolds that smooth 3‑D skeleton streams in real time, cutting tele‑operation jitter by ≈ 38 % and lowering end‑effector MPJPE by ≈ 15 % relative to classical Kalman and Savitzky‑Golay filters, all while guaranteeing physically plausible joint trajectories.
+  Working with Prof. Pratik Chaudhari, I transfer human upper‑body motion to a 4‑DoF desktop arm.  My HPSTM Transformer learns bone‑length‑preserving manifolds that smooth 3‑D skeleton streams in real time, cutting tele‑operation jitter by ≈ 38 % and lowering end‑effector MPJPE by ≈ 15 % relative to classical Kalman and Savitzky‑Golay filters, all while guaranteeing physically plausible joint trajectories.
 
-### PRISM  (Path Reasoning with Importance Sampling & Multi‑feedback — ongoing)
+- **PRISM  (Path Reasoning with Importance Sampling & Multi‑feedback — ongoing)**
 
-PRISM  (Path Reasoning with Importance Sampling & Multi‑feedback — ongoing)
-Parallel to my robotics work, I am designing PRISM, a bilevel‑optimised framework that treats knowledge‑graph reasoning paths as RL actions and learns to sample them via importance weighting.  PRISM further incorporates heterogeneous user feedback to refine its path utility estimates, aiming for explainable, real‑time recommendation without hand‑crafted rewards.  The project explores how the same RL‑plus‑manifold philosophy scales from physical embodiment to large‑scale decision systems.
+  Parallel to my robotics work, I am designing PRISM, a bilevel‑optimised framework that treats knowledge‑graph reasoning paths as RL actions and learns to sample them via importance weighting.  PRISM further incorporates heterogeneous user feedback to refine its path utility estimates, aiming for explainable, real‑time recommendation without hand‑crafted rewards.  The project explores how the same RL‑plus‑manifold philosophy scales from physical embodiment to large‑scale decision systems.
 
 ## Background & Vision
 
