@@ -10,7 +10,7 @@ redirect_from:
 
 ## Education
 
-### M.S.E. in Systems Engineering
+### M.S.E. in Data Science
 
 *University of Pennsylvania* Sep 2024 – Jun 2026 *(expected)*
 

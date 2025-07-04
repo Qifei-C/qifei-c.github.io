@@ -45,7 +45,11 @@
             Work in progress. 
             {% if post.venue %}<em>{{ post.venue }}</em>, {% endif %}
             {% if post.paperurl %}
-              <a href="{{ post.paperurl }}">Download Unofficial Paper</a>
+              {% if post.paperurl contains "arxiv.org" %}
+                <a href="{{ post.paperurl }}" target="_blank">View on arXiv</a>
+              {% else %}
+                <a href="{{ post.paperurl }}">Download Unofficial Paper</a>
+              {% endif %}
             {% endif %}
           </p>
         {% elsif post.collection == 'teaching' %}
@@ -79,9 +83,22 @@
     {% elsif post.citation %}
       <p>Recommended citation: {{ post.citation }}</p>
     {% elsif post.paperurl and post.bibtexurl %}
-      <p><a href=" {{ post.paperurl }} ">Download Paper</a> | <a href="{{ post.bibtexurl }}">Download Bibtex</a></p>
+      <p>
+        {% if post.paperurl contains "arxiv.org" %}
+          <a href="{{ post.paperurl }}" target="_blank">View on arXiv</a>
+        {% else %}
+          <a href="{{ post.paperurl }}">Download Paper</a>
+        {% endif %}
+        | <a href="{{ post.bibtexurl }}">Download Bibtex</a>
+      </p>
     {% elsif post.paperurl and post..status != 'unpublished'%}
-      <p><a href=" {{ post.paperurl }} ">Download Paper</a></p>
+      <p>
+        {% if post.paperurl contains "arxiv.org" %}
+          <a href="{{ post.paperurl }}" target="_blank">View on arXiv</a>
+        {% else %}
+          <a href="{{ post.paperurl }}">Download Paper</a>
+        {% endif %}
+      </p>
     {% elsif post.slidesurl and post.bibtexurl %}
       <p><a href="{{ post.slidesurl }}">Download Slides</a> | <a href="{{ post.bibtexurl }}">Download Bibtex</a></p>
     {% elsif post.slidesurl %}
