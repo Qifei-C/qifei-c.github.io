@@ -2,7 +2,7 @@
 title: "Environmental AQI Analysis"
 excerpt: "Air Quality Index prediction and analysis using machine learning and environmental data"
 collection: projects
-date: 2023-11-05
+date: 2025-05-05
 github: https://github.com/Qifei-C/environmental-aqi-analysis
 tags:
   - Environmental Data

@@ -12,7 +12,7 @@ author_profile: true
 Below are some of my open-source projects hosted on GitHub. Each project includes detailed documentation and implementation.
 
 <div class="grid__wrapper">
-  {% assign sorted_projects = site.projects | sort: 'name' | reverse %}
+  {% assign sorted_projects = site.projects | sort: 'date' | reverse %}
   {% for post in sorted_projects %}
     <div class="grid__item">
       <article class="archive__item" itemscope itemtype="https://schema.org/CreativeWork">

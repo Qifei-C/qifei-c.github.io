@@ -2,7 +2,7 @@
 title: "NLP Claims Analysis"
 excerpt: "Natural language processing system for automated insurance claims analysis and classification"
 collection: projects
-date: 2023-11-20
+date: 2023-09-20
 github: https://github.com/Qifei-C/nlp-claims-analysis
 tags:
   - NLP

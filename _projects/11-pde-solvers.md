@@ -2,7 +2,7 @@
 title: "PDE Solvers Collection"
 excerpt: "Numerical methods for solving partial differential equations with applications in physics and engineering"
 collection: projects
-date: 2023-11-15
+date: 2022-11-15
 github: https://github.com/Qifei-C/pde-solvers-collection
 tags:
   - Numerical Methods

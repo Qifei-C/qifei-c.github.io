@@ -2,7 +2,7 @@
 title: "SARIMA Time Series Toolkit"
 excerpt: "Seasonal ARIMA modeling toolkit for time series forecasting with automated parameter selection"
 collection: projects
-date: 2023-11-30
+date: 2023-12-30
 github: https://github.com/Qifei-C/sarima-time-series-toolkit
 tags:
   - Time Series

@@ -2,7 +2,7 @@
 title: "Robotics Perception and Control"
 excerpt: "Integrated perception and control system for robotic manipulation using computer vision and reinforcement learning"
 collection: projects
-date: 2023-12-20
+date: 2025-05-20
 github: https://github.com/Qifei-C/robotics-perception-control
 tags:
   - Robotics
