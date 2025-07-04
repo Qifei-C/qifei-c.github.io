@@ -2,7 +2,7 @@
 title: "Brain MRI Segmentation"
 excerpt: "Deep learning-based brain tumor segmentation using GANet-Seg architecture for medical image analysis"
 collection: projects
-date: 2024-01-15
+date: 2024-12-15
 github: https://github.com/Qifei-C/brain-mri-segmentation
 tags:
   - Deep Learning

@@ -2,7 +2,7 @@
 title: "Deep Learning Algorithms Toolkit"
 excerpt: "A comprehensive collection of deep learning algorithms and architectures for various AI applications"
 collection: projects
-date: 2023-12-15
+date: 2024-12-15
 github: https://github.com/Qifei-C/deep-learning-algorithms-toolkit
 tags:
   - Deep Learning

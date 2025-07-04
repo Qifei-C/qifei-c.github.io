@@ -2,7 +2,7 @@
 title: "Robotics Algorithms Toolkit"
 excerpt: "Collection of fundamental robotics algorithms including path planning, SLAM, and control"
 collection: projects
-date: 2023-11-10
+date: 2025-05-10
 github: https://github.com/Qifei-C/robotics-algorithms-toolkit
 tags:
   - Robotics
