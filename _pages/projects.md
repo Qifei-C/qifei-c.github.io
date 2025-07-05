@@ -47,7 +47,7 @@ Below are some of my open-source projects hosted on GitHub. Each project include
   padding: 0.2em 0.5em;
   margin: 0.2em;
   font-size: 0.8em;
-  background-color: #f0f0f0;
+  background-color: var(--global-border-color);
   border-radius: 3px;
 }
 </style>
