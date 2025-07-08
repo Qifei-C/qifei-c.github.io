@@ -39,7 +39,7 @@ html[data-theme="dark"] {
     --global-bg-color                   : #{$background};
     --global-footer-bg-color            : #{$background};
     --global-border-color               : #{$light-gray};
-    --global-tag-color                  : #{darker-gray};
+    --global-tag-color                  : #{$gray};
     --global-dark-border-color          : #{$background-light};
     --global-code-background-color      : #fafafa;
     --global-code-text-color            : #{$darker-gray};

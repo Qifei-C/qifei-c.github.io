@@ -9,7 +9,7 @@ author_profile: true
 
 ## Open Source Projects
 
-Below are some of my open-source projects hosted on GitHub. Each project includes detailed documentation and implementation.
+This section presents a collection of my open-source projects, originating from academic coursework and independent development. Each project, hosted on GitHub, features comprehensive documentation and implementation details.
 
 <div class="grid__wrapper">
   {% assign sorted_projects = site.projects | sort: 'date' | reverse %}
