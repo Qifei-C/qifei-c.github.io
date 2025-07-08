@@ -91,7 +91,7 @@
         {% endif %}
         | <a href="{{ post.bibtexurl }}">Download Bibtex</a>
       </p>
-    {% elsif post.paperurl and post..status != 'unpublished'%}
+    {% elsif post.paperurl and post.status != 'unpublished'%}
       <p>
         {% if post.paperurl contains "arxiv.org" %}
           <a href="{{ post.paperurl }}" target="_blank">View on arXiv</a>
@@ -105,6 +105,33 @@
       <p><a href="{{ post.slidesurl }}">Download Slides</a></p>
     {% elsif post.bibtexurl %}
       <p><a href="{{ post.bibtexurl }}">Download Bibtex</a></p>
+    {% endif %}
+
+    {% comment %} Display GitHub repository and other resource links {% endcomment %}
+    {% if post.github_repo or post.resources %}
+      <p class="archive__item-resources">
+        {% if post.github_repo %}
+          <a href="{{ post.github_repo }}" target="_blank"><i class="fab fa-github"></i> GitHub Repository</a>
+          {% if post.dataset_url or post.demo_url or post.resources %} | {% endif %}
+        {% endif %}
+        {% if post.dataset_url %}
+          <a href="{{ post.dataset_url }}" target="_blank"><i class="fas fa-database"></i> Dataset</a>
+          {% if post.demo_url or post.resources %} | {% endif %}
+        {% endif %}
+        {% if post.demo_url %}
+          <a href="{{ post.demo_url }}" target="_blank"><i class="fas fa-play-circle"></i> Demo</a>
+          {% if post.resources %} | {% endif %}
+        {% endif %}
+        {% if post.resources %}
+          {% for resource in post.resources %}
+            <a href="{{ resource.url }}" target="_blank">
+              {% if resource.icon %}<i class="{{ resource.icon }}"></i> {% endif %}
+              {{ resource.name }}
+            </a>
+            {% unless forloop.last %} | {% endunless %}
+          {% endfor %}
+        {% endif %}
+      </p>
     {% endif %}
 
   </article>

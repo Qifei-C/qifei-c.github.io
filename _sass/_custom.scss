@@ -42,3 +42,26 @@ html[data-bionic-reading="enabled"] [data-bionic-applied] b { /* Bionic <b> tags
 html[data-bionic-reading="enabled"] [data-bionic-applied] strong { /* Markdown <strong> tags when feature is ON */
   font-weight: 650; /* Make it consistent with <b>, or choose a slightly heavier weight like 700 or 750 if you want it to remain more emphasized but still animated */
 }
+
+/* Research Resource Links Styling */
+.archive__item-resources {
+  margin-top: 0.5em;
+  font-size: 0.9em;
+}
+
+.archive__item-resources a {
+  color: #0366d6;
+  text-decoration: none;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.archive__item-resources a:hover {
+  background-color: #f6f8fa;
+  text-decoration: underline;
+}
+
+.archive__item-resources i {
+  margin-right: 0.3em;
+}
