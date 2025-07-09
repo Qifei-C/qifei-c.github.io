@@ -27,7 +27,7 @@ I pursue AI that understands the hidden geometries of motion and thought — bri
 
 ## Background & Vision
 
-I hold dual B.S. degrees in Applied Mathematics and Statistics & Data Science from UC Santa Barbara.  This mathematical grounding supports my long‑term goal: robots and decision systems that naturally understand, safely reason, and seamlessly collaborate with humans in messy, dynamic environments.
+I hold B.S. degrees in Applied Mathematics and in Statistics and Data Science from UC Santa Barbara.  This mathematical grounding supports my long‑term goal: robots and decision systems that naturally understand, safely reason, and seamlessly collaborate with humans in messy, dynamic environments.
 
 ## Quick Facts
 
