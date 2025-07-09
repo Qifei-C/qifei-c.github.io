@@ -6,10 +6,7 @@ status: unpublished
 permalink: /research/HPSTM-updated
 excerpt: 'A novel Transformer-based approach for smoothing 3D human pose trajectories in real-time teleoperation, addressing jitter and instability issues in markerless motion capture while maintaining temporal consistency for precise robotic control.'
 date: 2025-03-15
-paperurl: https://arxiv.org/abs/2506.17282
-github_repo: https://github.com/Qifei-C/Human_Pose_Smoothing_Transformer_Module
-dataset_url: https://github.com/Qifei-C/Human_Pose_Smoothing_Transformer_Module/tree/main/data
-demo_url: https://github.com/Qifei-C/Human_Pose_Smoothing_Transformer_Module#demo
+github_repo: https://github.com/Qifei-C/HPSTM
 ---
 
 This research presents a Transformer-based smoothing module (HPSTM) designed to enhance the quality of 3D human pose trajectories for robot teleoperation applications.

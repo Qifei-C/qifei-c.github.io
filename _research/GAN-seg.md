@@ -4,8 +4,9 @@ collection: research
 category: recent
 status: unpublished
 permalink: /research/GAN-seg
-redirect_to: "https://github.com/Qifei-C/GANNet-Seg/"
+redirect_to: https://github.com/Qifei-C/GANNet-Seg/
 paperurl: https://arxiv.org/abs/2506.21245
+github_repo: https://github.com/Qifei-C/GANNet-Seg/
 excerpt: 'Leveraging pre-trained GANs and U‑Net, this framework combines a global anomaly detection module with iterative mask refinement under adversarial loss to accurately segment brain tumors on multi‑modal MRI. By incorporating synthetic image augmentation, it overcomes limited annotated data and achieves superior lesion‑wise Dice and HD95 performance on the BraTS benchmark, reducing reliance on fully labeled datasets for real‑world clinical use.'
 date: 2024-12-19
 ---
