@@ -5,6 +5,7 @@ category: recent
 status: unpublished
 permalink: /research/ESFP
 github_repo: https://github.com/Qifei-C/Genuine-ESFP/
+redirect_to: https://github.com/Qifei-C/Genuine-ESFP/
 paperurl: https://arxiv.org/abs/2506.21234
 demo_url: https://www.youtube.com/watch?v=7yrYrcs5UFk
 excerpt: 'Leveraging a monocular RGB stream and a novel Transformer-based smoothing module (HPSTM), this end-to-end ESFP pipeline estimates 3D human pose via ROMP, enforces anatomical consistency through forward‑kinematics, and maps refined trajectories to a low‑cost 4‑DoF uArm in real time. By jointly predicting per‑joint uncertainty and applying dynamic filtering, it delivers smooth, reliable vision‑to‑robot imitation for desktop manipulation tasks.'
