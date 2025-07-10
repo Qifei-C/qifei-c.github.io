@@ -20,7 +20,7 @@ redirect_from:
    * *Mathematical Foundations:* Modern Convex Optimization, Statistics for Data Science
    * *Robotics & Control:* Learning in Robotics
 
-### Dual B.S. in Applied Mathematics **and** Statistics & Data Science
+###  B.S. in Applied Mathematics **and** in Statistics & Data Science
 
 *University of California, Santa Barbara* Sep 2019 – Dec 2023
 
