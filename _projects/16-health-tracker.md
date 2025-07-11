@@ -2,7 +2,7 @@
 title: "Health Tracker Web Application"
 excerpt: "Comprehensive web application for tracking blood glucose, ketones, food intake, and body metrics with automatic health calculations"
 collection: projects
-date: 2024-08-01
+date: 2025-08-01
 github: https://github.com/Qifei-C/health_tracker
 tags:
   - Web Development
