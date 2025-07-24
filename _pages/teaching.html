@@ -7,6 +7,31 @@ author_profile: true
 
 {% include base_path %}
 
-{% for post in site.teaching reversed %}
+{% assign sorted_teaching = site.teaching | sort: 'date' %}
+{% assign today = 'now' | date: '%s' %}
+{% assign upcoming = '' | split: '' %}
+{% assign past = '' | split: '' %}
+
+{% for post in sorted_teaching %}
+  {% assign post_date = post.date | date: '%s' %}
+  {% if post_date >= today %}
+    {% assign upcoming = upcoming | push: post %}
+  {% else %}
+    {% assign past = past | push: post %}
+  {% endif %}
+{% endfor %}
+
+{% if upcoming.size > 0 %}
+<h2>Upcoming Courses</h2>
+{% for post in upcoming %}
   {% include archive-single.html %}
 {% endfor %}
+{% endif %}
+
+{% if past.size > 0 %}
+<h2>Past Courses</h2>
+{% assign past_reversed = past | reverse %}
+{% for post in past_reversed %}
+  {% include archive-single.html %}
+{% endfor %}
+{% endif %}
