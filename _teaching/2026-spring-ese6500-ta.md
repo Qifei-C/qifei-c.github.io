@@ -8,7 +8,7 @@ date: 2026-01-15
 location: "Philadelphia, PA, USA"
 ---
 
-I will serve as a graduate TA for ESE 6500 in Spring 2026.
+I will serve as a graduate TA for ESE 6500 Learning in Robotics in Spring 2026.
 
 ### Office Hours
 

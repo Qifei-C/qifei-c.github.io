@@ -1,5 +1,5 @@
 ---
-title: "Teaching Assistant – ESE 5460: Deep Learning Principle"
+title: "Teaching Assistant – ESE 5420 Statistics for Data Science"
 collection: teaching
 type: "Graduate Course"
 permalink: /teaching/2025-fall-ese5420-ta

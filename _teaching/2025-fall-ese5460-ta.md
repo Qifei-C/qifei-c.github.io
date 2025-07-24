@@ -8,7 +8,7 @@ date: 2025-08-27
 location: "Philadelphia, PA, USA"
 ---
 
-I will serve as a graduate TA for ESE 5460 in Fall 2025.
+I will serve as a graduate TA for ESE 5460 Deep Learning Principle in Fall 2025.
 
 ### Office Hours
 
