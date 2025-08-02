@@ -1,0 +1,3746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPSTM: Unified Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            background: #050508;
+        }
+        
+        /* Main Container */
+        #app-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Canvas Container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+        
+        /* Title Section */
+        #title {
+            position: fixed;
+            top: 40px;
+            left: 50px;
+            z-index: 30;
+            pointer-events: none;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #title .main-title {
+            font-size: 72px;
+            font-weight: 900;
+            color: #ffffff;
+            line-height: 1;
+            margin: 0;
+            letter-spacing: -2px;
+            text-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #title .subtitle {
+            font-size: 24px;
+            font-weight: 300;
+            color: #a0a0b0;
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 1;
+        }
+        
+        /* Title animation states */
+        #title.switching .main-title {
+            transform: translateY(-10px);
+            opacity: 0.3;
+        }
+        
+        #title.switching .subtitle {
+            transform: translateY(-5px);
+            opacity: 0;
+        }
+        
+        #title.comparison-mode .main-title {
+            font-size: 56px;
+        }
+        
+        #title.comparison-mode .subtitle {
+            font-size: 20px;
+        }
+        
+        /* Mode Switch Button */
+        .mode-switch {
+            position: fixed;
+            top: 40px;
+            right: 50px;
+            z-index: 100;
+            background: rgba(20, 20, 30, 0.9);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            color: #a855f7;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            overflow: hidden;
+        }
+        
+        .mode-switch:hover {
+            background: rgba(30, 30, 40, 0.95);
+            border-color: rgba(168, 85, 247, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+        }
+        
+        .mode-switch::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.3), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .mode-switch:hover::before {
+            left: 100%;
+        }
+        
+        /* Status Panel (for mechanism mode) */
+        #status-panel {
+            position: fixed;
+            top: 180px;
+            left: 50px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+            z-index: 50;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        #status-panel.hidden {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
+        
+        .status-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #a855f7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-bar {
+            height: 4px;
+            background: rgba(168, 85, 247, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        
+        .status-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c3aed, #a855f7);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+        
+        .status-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #a0a0b0;
+        }
+        
+        /* Labels Container - Unified for both modes */
+        .labels-container {
+            position: fixed;
+            left: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            z-index: 15;
+            max-height: 70vh;
+            justify-content: center;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .labels-container > * {
+            pointer-events: auto;
+        }
+        
+        .labels-container::before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 35px;
+            bottom: 35px;
+            width: 1px;
+            background: linear-gradient(
+                to bottom,
+                transparent 0%,
+                rgba(255, 255, 255, 0.1) 20%,
+                rgba(255, 255, 255, 0.1) 80%,
+                transparent 100%
+            );
+            opacity: 0.5;
+        }
+        
+        .label-bubble {
+            position: relative;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 14px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideInLabel 0.5s ease forwards;
+        }
+        
+        @keyframes slideInLabel {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .label-bubble:hover {
+            transform: translateX(10px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        .label-bubble.active {
+            transform: translateX(10px) scale(1.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-left-width: 6px;
+        }
+        
+        .label-bubble strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .label-bubble .subtitle {
+            color: #a0a0b0;
+            font-size: 12px;
+        }
+        
+        /* Algorithm Labels (for comparison mode) */
+        .algo-label {
+            animation-delay: 0.3s;
+        }
+        
+        #algo-hpstm {
+            animation-delay: 0.3s;
+            border-left-color: #fbbf24;
+        }
+        
+        #algo-kalman {
+            animation-delay: 0.5s;
+            border-left-color: #a855f7;
+        }
+        
+        #algo-sg {
+            animation-delay: 0.7s;
+            border-left-color: #a855f7;
+        }
+        
+        #algo-gt {
+            animation-delay: 0.9s;
+            border-left-color: #10b981;
+        }
+        
+        /* Detail Card */
+        .detail-card {
+            position: fixed;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%) translateX(20px) scale(0.95);
+            background: rgba(20, 20, 30, 0.95);
+            border-radius: 20px;
+            padding: 0;
+            width: 420px;
+            max-height: 600px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        
+        .detail-card.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-50%) translateX(0) scale(1);
+            pointer-events: auto;
+        }
+        
+        .detail-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--accent-color, #10b981);
+            transition: background 0.2s ease;
+        }
+        
+        .detail-card-inner {
+            padding: 30px;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+        
+        .detail-card-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 20px 0;
+            position: relative;
+            padding-bottom: 15px;
+            transition: opacity 0.15s ease;
+        }
+        
+        .detail-card-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--accent-color, #10b981);
+            border-radius: 2px;
+            transition: background 0.2s ease;
+        }
+        
+        .detail-card-content {
+            color: #e0e0e0;
+            line-height: 1.8;
+            font-size: 15px;
+            transition: opacity 0.15s ease;
+        }
+        
+        .detail-card-content p {
+            margin: 0 0 20px 0;
+        }
+        
+        .detail-card-content strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        .detail-card-list {
+            margin: 20px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+        
+        .detail-card-list li {
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 14px;
+            color: #d0d0d0;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .detail-card-list li:before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-color, #10b981);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-color, #10b981);
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        /* Detail card themes */
+        .detail-card[data-theme="noisy"] {
+            --accent-color: #ef4444;
+        }
+        
+        .detail-card[data-theme="manifold"] {
+            --accent-color: #3b82f6;
+        }
+        
+        .detail-card[data-theme="trajectory"] {
+            --accent-color: #10b981;
+        }
+        
+        .detail-card[data-theme="transformer"] {
+            --accent-color: #a855f7;
+        }
+        
+        .detail-card[data-theme="hpstm"] {
+            --accent-color: #fbbf24;
+        }
+        
+        .detail-card[data-theme="kalman"],
+        .detail-card[data-theme="sg"] {
+            --accent-color: #a855f7;
+        }
+        
+        .detail-card[data-theme="gt"] {
+            --accent-color: #10b981;
+        }
+        
+        .detail-card.transitioning .detail-card-title,
+        .detail-card.transitioning .detail-card-content {
+            opacity: 0;
+        }
+        
+        /* Control Panel (for comparison mode) */
+        #control-panel {
+            position: fixed;
+            bottom: 40px;
+            right: 50px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            z-index: 50;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+        
+        #control-panel.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #a855f7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .parameter-control {
+            margin-bottom: 20px;
+        }
+        
+        .param-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #a0a0b0;
+        }
+        
+        .param-value {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #a855f7;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+        
+        .metrics-panel {
+            background: rgba(10, 10, 20, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .metric-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .metric-label {
+            color: #a0a0b0;
+        }
+        
+        .metric-value {
+            color: #ffffff;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .scene-selector {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .scene-label {
+            font-size: 13px;
+            color: #a0a0b0;
+            margin-bottom: 10px;
+        }
+        
+        .scene-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .scene-button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #c0c0c0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .scene-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .scene-button.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #ffffff;
+        }
+        
+        /* Legend */
+        .legend {
+            position: fixed;
+            bottom: 40px;
+            left: 50px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 20px;
+            z-index: 20;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+        
+        .legend.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #e0e0e0;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        
+        /* Drag Hint */
+        .drag-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 30, 0.9);
+            padding: 12px 24px;
+            border-radius: 20px;
+            color: #a0a0b0;
+            font-size: 13px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.8;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            letter-spacing: 0.5px;
+            transition: opacity 0.5s ease;
+        }
+        
+        /* Computing indicator */
+        .computing {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 11px;
+            color: #a855f7;
+            display: none;
+        }
+        
+        .computing.active {
+            display: block;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        
+        /* Fade transition for canvas */
+        #canvas-container {
+            transition: opacity 0.4s ease;
+        }
+        
+        #canvas-container.switching {
+            opacity: 0.3;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            #title {
+                left: 20px;
+                top: 20px;
+            }
+            
+            #title .main-title {
+                font-size: 48px;
+            }
+            
+            #title.comparison-mode .main-title {
+                font-size: 40px;
+            }
+            
+            #title .subtitle {
+                font-size: 18px;
+            }
+            
+            .mode-switch {
+                top: 20px;
+                right: 20px;
+                padding: 10px 20px;
+                font-size: 12px;
+            }
+            
+            #status-panel {
+                top: auto;
+                bottom: 100px;
+                left: 20px;
+                min-width: 150px;
+                padding: 15px;
+            }
+            
+            .labels-container {
+                left: 20px;
+                gap: 20px;
+            }
+            
+            .labels-container::before {
+                display: none;
+            }
+            
+            .label-bubble {
+                padding: 12px 20px;
+                font-size: 12px;
+            }
+            
+            .detail-card {
+                width: calc(100vw - 40px);
+                left: 20px;
+                right: 20px;
+                top: auto;
+                bottom: 20px;
+                transform: translateY(20px) scale(0.95);
+                max-height: 60vh;
+            }
+            
+            .detail-card.active {
+                transform: translateY(0) scale(1);
+            }
+            
+            #control-panel {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+            }
+            
+            .legend {
+                display: none;
+            }
+            
+            .drag-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Canvas Container -->
+        <div id="canvas-container"></div>
+        
+        <!-- Title Section -->
+        <div id="title">
+            <h1 class="main-title">HPSTM</h1>
+            <div class="subtitle">Pose Sequence Refinement on Manifold</div>
+        </div>
+        
+        <!-- Mode Switch Button -->
+        <button class="mode-switch" id="mode-switch">
+            <span>View Comparison</span>
+        </button>
+        
+        <!-- Status Panel (Mechanism Mode) -->
+        <div id="status-panel">
+            <div class="status-indicator">
+                <div class="status-title">Refinement Progress</div>
+                <div class="status-bar">
+                    <div class="status-fill" id="processing-fill"></div>
+                </div>
+                <div class="status-info">
+                    <span id="processing-stage">Idle</span>
+                    <span id="processing-rate">0%</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Labels Container -->
+        <div class="labels-container" id="labels-container">
+            <!-- Mechanism mode labels -->
+            <div id="noisy-label" class="label-bubble" style="border-left-color: #ef4444;">
+                <strong>Noisy Input Sequence</strong>
+                <span class="subtitle">Jittered poses near true path</span>
+            </div>
+            
+            <div id="manifold-label" class="label-bubble" style="border-left-color: #3b82f6;">
+                <strong>Human Pose Manifold</strong>
+                <span class="subtitle">Space of valid configurations</span>
+            </div>
+            
+            <div id="trajectory-label" class="label-bubble" style="border-left-color: #10b981;">
+                <strong>Refined Trajectory</strong>
+                <span class="subtitle">Smooth continuous motion</span>
+            </div>
+            
+            <div id="transformer-label" class="label-bubble" style="border-left-color: #a855f7;">
+                <strong>Transformer Window</strong>
+                <span class="subtitle">±16 frames sliding attention window</span>
+            </div>
+            
+            <!-- Comparison mode labels (initially hidden) -->
+            <div id="algo-hpstm" class="label-bubble algo-label" style="display: none;">
+                <strong>HPSTM</strong>
+                <span class="subtitle">Manifold-Aware Refinement</span>
+            </div>
+            
+            <div id="algo-kalman" class="label-bubble algo-label" style="display: none;">
+                <strong>Kalman Filter</strong>
+                <span class="subtitle">Constant Velocity Model</span>
+            </div>
+            
+            <div id="algo-sg" class="label-bubble algo-label" style="display: none;">
+                <strong>Savitzky-Golay</strong>
+                <span class="subtitle">Polynomial Smoothing</span>
+            </div>
+            
+            <div id="algo-gt" class="label-bubble algo-label" style="display: none;">
+                <strong>Ground Truth</strong>
+                <span class="subtitle">Original Clean Motion</span>
+            </div>
+        </div>
+        
+        <!-- Detail Card -->
+        <div class="detail-card" id="detail-card">
+            <div class="detail-card-inner">
+                <h3 class="detail-card-title" id="detail-card-title">Title</h3>
+                <div class="detail-card-content" id="detail-card-content">
+                    <!-- Content will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Panel (Comparison Mode) -->
+        <div id="control-panel">
+            <div class="panel-title">Algorithm Parameters</div>
+            
+            <div class="parameter-control">
+                <div class="param-label">
+                    <span>Smoothness λ</span>
+                    <span class="param-value" id="lambda-value">0.010</span>
+                </div>
+                <input type="range" class="slider" id="lambda-slider" 
+                       min="-3" max="-0.5" step="0.05" value="-2">
+            </div>
+            
+            <div class="parameter-control">
+                <div class="param-label">
+                    <span>Noise Level σ</span>
+                    <span class="param-value" id="noise-value">0.50</span>
+                </div>
+                <input type="range" class="slider" id="noise-slider" 
+                       min="0.1" max="2.0" step="0.05" value="0.5">
+            </div>
+            
+            <div class="parameter-control">
+                <div class="param-label">
+                    <span>Window Size W</span>
+                    <span class="param-value" id="win-value">32</span>
+                </div>
+                <input type="range" class="slider" id="win-slider" 
+                       min="7" max="65" step="2" value="32">
+            </div>
+            
+            <div class="metrics-panel">
+                <div class="metric-row">
+                    <span class="metric-label">Surface Distance</span>
+                    <span class="metric-value" id="surface-dist">0.000</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Curvature Energy</span>
+                    <span class="metric-value" id="curvature-energy">0.000</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Data Fidelity</span>
+                    <span class="metric-value" id="data-fidelity">0.000</span>
+                </div>
+            </div>
+            
+            <div class="scene-selector">
+                <div class="scene-label">Test Scenario</div>
+                <div class="scene-buttons">
+                    <button class="scene-button active" data-scene="spiral">Spiral</button>
+                    <button class="scene-button" data-scene="s-curve">S-Curve</button>
+                    <button class="scene-button" data-scene="sharp-turn">Sharp Turn</button>
+                    <button class="scene-button" data-scene="outliers">Outliers</button>
+                </div>
+            </div>
+            
+            <div class="computing">Computing...</div>
+        </div>
+        
+        <!-- Legend (Comparison Mode) -->
+        <div class="legend" id="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ef4444;"></div>
+                <span>Noisy Input</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #fbbf24;"></div>
+                <span>HPSTM Output</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #a855f7;"></div>
+                <span>Other Algorithms</span>
+            </div>
+        </div>
+        
+        <!-- Drag Hint -->
+        <div class="drag-hint">Drag to rotate • Space to pause</div>
+    </div>
+
+    <script type="module">
+        // ========== Moving Transformer Pipeline Class ==========
+        class TransformerPipeline {
+            constructor(scene, trajectoryCurve, noisyPoints) {
+                this.scene = scene;
+                this.trajectoryCurve = trajectoryCurve;
+                this.noisyPoints = noisyPoints;
+                this.group = new THREE.Group();
+                
+                this.cylinder = null;
+                this.position = 0;
+                this.windowSize = 0.08;
+                this.absorbedPoints = [];
+                this.absorptionAnimations = [];
+                this.outputParticles = [];
+                this.currentFadeAlpha = 1.0;
+                this.sparkParticles = [];
+                
+                this.colors = {
+                    outer: new THREE.Color(0xa855f7),
+                    inner: new THREE.Color(0x7c3aed),
+                    ring : new THREE.Color(0xd6b2ff),
+                    white: new THREE.Color(0xffffff)
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                const segments = 50;
+                
+                const cylinderPoints = [];
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments * this.windowSize;
+                    cylinderPoints.push(new THREE.Vector3(0, 0, -t * 100));
+                }
+                
+                const cylinderCurve = new THREE.CatmullRomCurve3(cylinderPoints);
+                const cylinderGeometry = new THREE.TubeGeometry(cylinderCurve, segments, 2.5, 32, false);
+                
+                const cylinderMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xa855f7,
+                    emissive: 0xa855f7,
+                    emissiveIntensity: 0.6,
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide,
+                    shininess: 150
+                });
+                
+                this.cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+                this.group.add(this.cylinder);
+                
+                const particleGeometry = new THREE.SphereGeometry(0.65, 24, 24);
+                for (let i = 0; i < 100; i++) {
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0xef4444,
+                        emissive: 0xef4444,
+                        emissiveIntensity: 1.5,
+                        transparent: true,
+                        opacity: 0,
+                        depthWrite: false,
+                        depthTest: true,
+                        shininess: 150
+                    });
+                    const particle = new THREE.Mesh(particleGeometry, material);
+                    particle.visible = false;
+                    particle.castShadow = false;
+                    particle.receiveShadow = false;
+                    particle.renderOrder = 500;
+                    particle.frustumCulled = false;
+                    this.scene.add(particle);
+                    this.absorbedPoints.push(particle);
+                }
+                
+                for (let i = 0; i < 30; i++) {
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x10b981,
+                        emissive: 0x10b981,
+                        emissiveIntensity: 1.5,
+                        transparent: true,
+                        opacity: 0,
+                        depthWrite: false,
+                        shininess: 200
+                    });
+                    const particle = new THREE.Mesh(particleGeometry, material);
+                    particle.visible = false;
+                    particle.castShadow = false;
+                    particle.receiveShadow = false;
+                    particle.renderOrder = 200;
+                    this.scene.add(particle);
+                    this.outputParticles.push(particle);
+                }
+                
+                this.group.renderOrder = 100;
+                this.scene.add(this.group);
+
+                const sparkGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+                for (let i = 0; i < 60; i++) {
+                    const mat = new THREE.MeshPhongMaterial({
+                        color: 0xff6666,
+                        emissive: 0xff6666,
+                        emissiveIntensity: 2.0,
+                        transparent: true,
+                        opacity: 0,
+                        depthWrite: false,
+                        depthTest: true,
+                        shininess: 150
+                    });
+                    const spark = new THREE.Mesh(sparkGeometry, mat);
+                    spark.visible = false;
+                    spark.castShadow = false;
+                    spark.receiveShadow = false;
+                    spark.renderOrder = 400;
+                    spark.frustumCulled = false;
+                    this.scene.add(spark);
+                    this.sparkParticles.push(spark);
+                }
+
+                this.updatePosition(0);
+            }
+            
+            updatePosition(position) {
+                this.position = position;
+              
+                if (this.cylinder) {
+                    this.cylinder.traverse((child) => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => mat.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    });
+                    this.group.remove(this.cylinder);
+                }
+              
+                const half = this.windowSize / 2;
+                let startT = position - half;
+                let endT   = position + half;
+              
+                startT = Math.max(0, startT);
+                endT   = Math.min(1, endT);
+              
+                if (endT - startT <= 1e-4) {
+                    this.currentFadeAlpha = 1.0;
+                    return;
+                }
+              
+                const segments = 30;
+                const cylinderPoints = [];
+                for (let i = 0; i <= segments; i++) {
+                    const t = startT + (endT - startT) * (i / segments);
+                    cylinderPoints.push(this.trajectoryCurve.getPoint(t));
+                }
+                const cylinderCurve = new THREE.CatmullRomCurve3(cylinderPoints);
+              
+                const tubularSegments = 80;
+                const outerRadius = 1.2;
+                const innerRadius = 0.85;
+                const radialSegments = 80;
+                const closed = false;
+              
+                const outerTubeGeometry = new THREE.TubeGeometry(
+                    cylinderCurve, tubularSegments, outerRadius, radialSegments, closed
+                );
+                const innerTubeGeometry = new THREE.TubeGeometry(
+                    cylinderCurve, tubularSegments, innerRadius, radialSegments, closed
+                );
+              
+                const outerTubeMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xa855f7,
+                    emissive: 0xa855f7,
+                    emissiveIntensity: 0.8,
+                    transparent: true,
+                    opacity: 0.6,
+                    shininess: 150,
+                    side: THREE.FrontSide,
+                    depthWrite: false
+                });
+              
+                const innerTubeMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x7c3aed,
+                    emissive: 0x7c3aed,
+                    emissiveIntensity: 0.4,
+                    transparent: true,
+                    opacity: 0.4,
+                    shininess: 100,
+                    side: THREE.BackSide,
+                    depthWrite: false
+                });
+              
+                const outerTubeMesh = new THREE.Mesh(outerTubeGeometry, outerTubeMaterial);
+                outerTubeMesh.renderOrder = 102;
+                outerTubeMesh.userData.type = 'outer';
+                
+                const innerTubeMesh = new THREE.Mesh(innerTubeGeometry, innerTubeMaterial);
+                innerTubeMesh.renderOrder = 101;
+                innerTubeMesh.userData.type = 'inner';
+              
+                const ringSegments = 64;
+                const ringMat = new THREE.LineBasicMaterial({
+                    color: 0xd6b2ff, 
+                    transparent: true, 
+                    opacity: 0.8,
+                    depthWrite: false,
+                    linewidth: 2
+                });
+              
+                const makeEndCap = (t) => {
+                    const pos = this.trajectoryCurve.getPoint(t);
+                    const tan = this.trajectoryCurve.getTangent(t);
+                    const up  = new THREE.Vector3(0,1,0);
+                    const bin = new THREE.Vector3().crossVectors(tan, up).normalize();
+                    const nor = new THREE.Vector3().crossVectors(bin, tan).normalize();
+              
+                    const capGroup = new THREE.Group();
+              
+                    const mkRing = (r) => {
+                        const pts = [];
+                        for (let i = 0; i <= ringSegments; i++) {
+                            const ang = (i / ringSegments) * Math.PI * 2;
+                            const x = Math.cos(ang) * r;
+                            const y = Math.sin(ang) * r;
+                            pts.push(pos.clone().addScaledVector(bin, x).addScaledVector(nor, y));
+                        }
+                        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                        return new THREE.Line(geo, ringMat.clone());
+                    };
+              
+                    const outerLine = mkRing(1.2);
+                    const innerLine = mkRing(0.85);
+              
+                    const spokeCount = 8;
+                    for (let i = 0; i < spokeCount; i++) {
+                        const ang = (i / spokeCount) * Math.PI * 2;
+                        const x1 = Math.cos(ang) * 0.85;
+                        const y1 = Math.sin(ang) * 0.85;
+                        const x2 = Math.cos(ang) * 1.2;
+                        const y2 = Math.sin(ang) * 1.2;
+                        const spokePts = [
+                            pos.clone().addScaledVector(bin, x1).addScaledVector(nor, y1),
+                            pos.clone().addScaledVector(bin, x2).addScaledVector(nor, y2)
+                        ];
+                        const spokeGeo = new THREE.BufferGeometry().setFromPoints(spokePts);
+                        const spokeLine = new THREE.Line(spokeGeo, ringMat.clone());
+                        spokeLine.renderOrder = 103;
+                        capGroup.add(spokeLine);
+                    }
+              
+                    outerLine.renderOrder = 103;
+                    innerLine.renderOrder = 103;
+                    capGroup.add(outerLine);
+                    capGroup.add(innerLine);
+                    return capGroup;
+                };
+              
+                const frontCap = makeEndCap(startT);
+                const backCap  = makeEndCap(endT);
+              
+                this.cylinder = new THREE.Group();
+                this.cylinder.add(outerTubeMesh);
+                this.cylinder.add(innerTubeMesh);
+                this.cylinder.add(frontCap);
+                this.cylinder.add(backCap);
+                this.group.add(this.cylinder);
+              
+                this.currentFadeAlpha = 1.0;
+              
+                this.checkNoisyPointAbsorption();
+                if (position > this.windowSize) {
+                    this.generateOutputParticles();
+                }
+            }
+            
+            checkNoisyPointAbsorption() {
+                if (this.currentFadeAlpha <= 0.1) return;
+                
+                const windowStart = this.position - this.windowSize / 2;
+                const windowEnd = this.position + this.windowSize / 2;
+                const leadDistance = 0.04;
+                
+                this.noisyPoints.forEach((point, index) => {
+                    const pointT = point.userData.t;
+                    
+                    if (pointT >= windowStart - leadDistance && pointT <= windowEnd + 0.01 && 
+                        point.visible && !point.userData.absorbed && !point.userData.beingAbsorbed) {
+                        
+                        point.userData.beingAbsorbed = true;
+                        const trajectoryPos = this.trajectoryCurve.getPoint(pointT);
+                        this.animateAbsorption(point, trajectoryPos, pointT);
+                    }
+                });
+            }
+            
+            animateAbsorption(noisyPoint, targetPos, pointT) {
+                const particle = this.absorbedPoints.find(p => !p.visible);
+                if (!particle) {
+                    return;
+                }
+                
+                particle.position.copy(noisyPoint.position);
+                particle.visible = true;
+                particle.material.opacity = 1.0;
+                particle.material.color.setHex(0xef4444);
+                particle.material.emissive.setHex(0xef4444);
+                particle.material.emissiveIntensity = 2.5;
+                particle.scale.setScalar(1.3);
+                particle.material.depthWrite = false;
+                particle.material.depthTest = true;
+                
+                const animation = {
+                    particle: particle,
+                    noisyPoint: noisyPoint,
+                    startPos: noisyPoint.position.clone(),
+                    targetPos: targetPos.clone(),
+                    pointT: pointT,
+                    progress: 0,
+                    active: true,
+                    phase: 'pulling'
+                };
+                
+                this.absorptionAnimations.push(animation);
+                
+                noisyPoint.visible = false;
+                
+                this.createAbsorptionSparks(noisyPoint.position, targetPos);
+            }
+
+            createAbsorptionSparks(startPos, targetPos) {
+                const sparkCount = 3;
+                for (let i = 0; i < sparkCount; i++) {
+                    const spark = this.sparkParticles.find(p => !p.visible);
+                    if (!spark) continue;
+              
+                    spark.position.copy(startPos);
+                    spark.visible = true;
+                    spark.material.color.setHex(0xff6666);
+                    spark.material.emissive.setHex(0xff6666);
+                    spark.material.emissiveIntensity = 3.0;
+                    spark.material.opacity = 1;
+                    spark.scale.setScalar(0.25);
+              
+                    const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.5;
+                    const speed = 0.1 + Math.random() * 0.05;
+                    const velocity = new THREE.Vector3(
+                        Math.cos(angle) * speed,
+                        Math.random() * 0.1,
+                        Math.sin(angle) * speed
+                    );
+              
+                    const animateSpark = () => {
+                        if (!spark.visible) return;
+              
+                        spark.position.add(velocity);
+                        velocity.multiplyScalar(0.95);
+                        spark.material.opacity *= 0.92;
+                        spark.scale.multiplyScalar(0.96);
+              
+                        const currentColor = spark.material.color;
+                        const purpleColor = new THREE.Color(0xa855f7);
+                        currentColor.lerp(purpleColor, 0.1);
+                        spark.material.emissive.copy(currentColor);
+              
+                        if (spark.material.opacity > 0.01) {
+                            requestAnimationFrame(animateSpark);
+                        } else {
+                            spark.visible = false;
+                        }
+                    };
+              
+                    animateSpark();
+                }
+            }
+            
+            updateAbsorptionAnimations() {
+                this.absorptionAnimations = this.absorptionAnimations.filter(anim => {
+                    if (!anim.active) return false;
+                    
+                    if (anim.phase === 'pulling') {
+                        anim.progress += 0.04;
+                        
+                        const t = this.easeInOutQuad(Math.min(anim.progress, 1));
+                        anim.particle.position.lerpVectors(anim.startPos, anim.targetPos, t);
+                        
+                        anim.particle.scale.setScalar(0.4 * (1 - t * 0.3));
+                        
+                        const purpleColor = new THREE.Color(0xa855f7);
+                        anim.particle.material.color.lerp(purpleColor, t * 0.5);
+                        anim.particle.material.emissive.lerp(purpleColor, t * 0.5);
+                        anim.particle.material.emissiveIntensity = 1.0 + t * 0.5;
+                        
+                        if (anim.progress >= 1) {
+                            anim.phase = 'following';
+                            anim.progress = 0;
+                        }
+                    } else if (anim.phase === 'following') {
+                        const currentPos = this.trajectoryCurve.getPoint(anim.pointT);
+                        anim.particle.position.copy(currentPos);
+                        
+                        anim.progress += 0.015;
+                        anim.particle.material.opacity = 0.8 * (1 - anim.progress);
+                        anim.particle.scale.setScalar(0.3 * (1 - anim.progress * 0.5));
+                        
+                        const purpleColor = new THREE.Color(0xa855f7);
+                        anim.particle.material.color.lerp(purpleColor, 0.1);
+                        anim.particle.material.emissive.lerp(purpleColor, 0.1);
+                        
+                        if (anim.progress >= 1 || anim.particle.material.opacity < 0.01) {
+                            anim.particle.visible = false;
+                            anim.noisyPoint.userData.absorbed = true;
+                            anim.active = false;
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            easeInOutQuad(t) {
+                if (t < 0.5) {
+                    return 2 * t * t;
+                } else {
+                    return 1 - Math.pow(-2 * t + 2, 3) / 2;
+                }
+            }
+            
+            generateOutputParticles() {
+                if (this.currentFadeAlpha <= 0.1 || this.position > 0.95) return;
+                
+                if (Math.random() < 0.05) {
+                    const particle = this.outputParticles.find(p => !p.visible);
+                    if (!particle) return;
+                    
+                    const endT = Math.min(1, this.position + this.windowSize / 2);
+                    const endPos = this.trajectoryCurve.getPoint(endT);
+                    particle.position.copy(endPos);
+                    particle.visible = true;
+                    particle.material.opacity = 1;
+                    particle.scale.setScalar(0.35);
+                    
+                    const startT = endT;
+                    
+                    const animateOutput = () => {
+                        if (!particle.visible) return;
+                        
+                        const t = startT - (this.position - startT) * 0.02;
+                        if (t > 0 && t < 1) {
+                            const point = this.trajectoryCurve.getPoint(t);
+                            particle.position.copy(point);
+                        }
+                        
+                        particle.material.opacity *= 0.98;
+                        particle.scale.multiplyScalar(1.01);
+                        
+                        if (particle.material.opacity > 0.01) {
+                            requestAnimationFrame(animateOutput);
+                        } else {
+                            particle.visible = false;
+                        }
+                    };
+                    
+                    animateOutput();
+                }
+            }
+            
+            animate(time) {
+                this.updateAbsorptionAnimations();
+            }
+            
+            updateIntensity(intensity) {
+                if (!this.cylinder) return;
+                
+                const t = 1 - THREE.MathUtils.clamp(intensity, 0, 1);
+                const outerBase = this.colors.outer;
+                const innerBase = this.colors.inner;
+                const ringBase  = this.colors.ring;
+                const white     = this.colors.white;
+                
+                this.cylinder.children.forEach(child => {
+                    if (child.isMesh && child.material) {
+                        const typ = child.userData.type;
+                        if (typ === 'outer' || typ === 'inner') {
+                            const base = (typ === 'outer') ? outerBase : innerBase;
+                            const col  = base.clone().lerp(white, t);
+                            child.material.color.copy(col);
+                            child.material.emissive.copy(col);
+                            
+                            const baseOpacity = (typ === 'outer') ? 0.6 : 0.4;
+                            const minOpacity  = 0.15;
+                            const op = THREE.MathUtils.lerp(minOpacity, baseOpacity, intensity);
+                            child.material.opacity = op;
+                            
+                            const baseEm = (typ === 'outer') ? 0.8 : 0.4;
+                            const emMin  = 0.1;
+                            child.material.emissiveIntensity = THREE.MathUtils.lerp(emMin, baseEm, intensity);
+                        }
+                    }
+                    else if (child.isGroup) {
+                        child.children.forEach(line => {
+                            if (line.isLine && line.material) {
+                                const col = ringBase.clone().lerp(white, t);
+                                line.material.color.copy(col);
+                                
+                                const baseOpacity = 0.8;
+                                const minOpacity  = 0.2;
+                                line.material.opacity = THREE.MathUtils.lerp(minOpacity, baseOpacity, intensity);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            reset() {
+                this.noisyPoints.forEach(point => {
+                    point.userData.absorbed = false;
+                    point.userData.beingAbsorbed = false;
+                    point.visible = true;
+                    point.material.opacity = point.userData.originalOpacity;
+                });
+                
+                this.absorptionAnimations.forEach(anim => {
+                    if (anim.particle) {
+                        anim.particle.visible = false;
+                    }
+                });
+                this.absorptionAnimations = [];
+                
+                this.absorbedPoints.forEach(particle => {
+                    particle.visible = false;
+                });
+            }
+        }
+
+        // ========== Algorithm Implementations ==========
+        class ManifoldCurve extends THREE.Curve {
+            constructor(points, h) {
+                super();
+                this.spline = new THREE.CatmullRomCurve3(points, false, 'centripetal', 0.0);
+                this.h = h;
+            }
+            getPoint(t) {
+                const p = this.spline.getPoint(t);
+                p.y = this.h(p.x, p.z);
+                return p;
+            }
+        }
+        
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed;
+            }
+            
+            next() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+            
+            gaussian(mean = 0, std = 1) {
+                const u1 = this.next();
+                const u2 = this.next();
+                const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                return z0 * std + mean;
+            }
+        }
+        
+        function savitzkyGolay(data, windowSize = 7, order = 3) {
+            const n = data.length / 3;
+            const result = new Float32Array(data.length);
+            const halfWindow = Math.floor(windowSize / 2);
+            
+            windowSize = halfWindow * 2 + 1;
+            
+            for (let i = 0; i < n; i++) {
+                let sumX = 0, sumY = 0, sumZ = 0;
+                let weights = 0;
+                
+                for (let j = -halfWindow; j <= halfWindow; j++) {
+                    const idx = Math.max(0, Math.min(n - 1, i + j));
+                    
+                    const weight = 1 - Math.abs(j) / (halfWindow + 1) * 0.5;
+                    
+                    sumX += data[idx * 3] * weight;
+                    sumY += data[idx * 3 + 1] * weight;
+                    sumZ += data[idx * 3 + 2] * weight;
+                    weights += weight;
+                }
+                
+                result[i * 3] = sumX / weights;
+                result[i * 3 + 1] = sumY / weights;
+                result[i * 3 + 2] = sumZ / weights;
+            }
+            
+            return result;
+        }
+
+        function edgeTaperWeights(T, k, beta){
+            const s = new Float32Array(T);
+            const kk = Math.max(1, Math.min(k, Math.floor(T/2)));
+            for (let i=0;i<T;i++){
+                const dl = kk - i;
+                const dr = kk - (T-1-i);
+                let w = 0;
+                if (dl > 0) w = Math.max(w, 1 - (i/kk));
+                if (dr > 0) w = Math.max(w, 1 - ((T-1-i)/kk));
+                w = w<=0 ? 0 : (w*w*(3-2*w));
+                s[i] = beta * w;
+            }
+            return s;
+        }
+        
+        function makeDisplayData(algo, refined, gt, manifoldFunc, edgePrior){
+            const T = refined.length/3;
+            if (!edgePrior?.enabled) return new Float32Array(refined);
+          
+            const apply = (edgePrior.applyTo==='All') ||
+                          (edgePrior.applyTo==='HPSTM' && (algo==='HPSTM' || algo==='GT'));
+            if (!apply) return new Float32Array(refined);
+          
+            const k = Math.max(1, Math.min(edgePrior.width|0, Math.floor(T/2)));
+            const beta = Math.max(0, Math.min(1, edgePrior.strength ?? 0.35));
+            const s = edgeTaperWeights(T, k, beta);
+          
+            const out = new Float32Array(refined.length);
+            const manifoldAware = (algo==='HPSTM' || algo==='GT');
+          
+            for (let i=0;i<T;i++){
+                const a = 1 - s[i];
+                const b = s[i];
+          
+                if (manifoldAware){
+                    const x = a*refined[3*i]   + b*gt[3*i];
+                    const z = a*refined[3*i+2] + b*gt[3*i+2];
+                    const y = manifoldFunc(x, z);
+                    out[3*i] = x; out[3*i+1] = y; out[3*i+2] = z;
+                }else{
+                    const x = a*refined[3*i]   + b*gt[3*i];
+                    const y = a*refined[3*i+1] + b*gt[3*i+1];
+                    const z = a*refined[3*i+2] + b*gt[3*i+2];
+                    out[3*i] = x; out[3*i+1] = y; out[3*i+2] = z;
+                }
+            }
+            return out;
+        }
+
+        function solve4x4(A, b) {
+            const M = new Float64Array(20);
+            for (let r=0;r<4;r++){
+                for (let c=0;c<4;c++) M[r*5+c] = A[r*4+c];
+                M[r*5+4] = b[r];
+            }
+            for (let i=0;i<4;i++){
+                let piv = M[i*5+i]; if (Math.abs(piv)<1e-12) piv = 1e-12;
+                const inv = 1.0/piv;
+                for (let c=i;c<5;c++) M[i*5+c] *= inv;
+                for (let r=0;r<4;r++) if (r!==i){
+                    const f = M[r*5+i];
+                    for (let c=i;c<5;c++) M[r*5+c] -= f*M[i*5+c];
+                }
+            }
+            return new Float64Array([M[4], M[9], M[14], M[19]]);
+        }
+        
+        function clamp01(x){ return x<0?0:(x>1?1:x); }
+        function smoothstep(x){ x = clamp01(x); return x*x*(3-2*x); }
+
+        function reflIdx(t, T){
+            if (t < 0)     return -t;
+            if (t > T-1)   return 2*T-2 - t;
+            return t;
+        }
+
+        function sgPolyFitWeightedEval(yArr, wArr, order=3, evalT=0, mode='center', eps=1e-8){
+            const L = yArr?.length|0; if (L<=0) return 0;
+            const wA = (wArr && wArr.length===L) ? wArr : Array(L).fill(1);
+            if (L===1) return Number.isFinite(yArr[0])?yArr[0]:0;
+            if (L===2){
+                const w0 = Number.isFinite(wA[0])?wA[0]:1, w1 = Number.isFinite(wA[1])?wA[1]:1;
+                const y0 = Number.isFinite(yArr[0])?yArr[0]:0, y1 = Number.isFinite(yArr[1])?yArr[1]:0;
+                const sw = w0+w1 || 1; return (w0*y0 + w1*y1)/sw;
+            }
+            const p = Math.min(3, Math.max(0, order|0));
+            const S = new Float64Array(2*p+1+1);
+            const rhs = new Float64Array(p+1);
+        
+            const m = (L-1)/2, dC = m>0?m:1, dR = (L-1)>0?(L-1):1;
+            for (let j=0;j<L;j++){
+                const y = Number.isFinite(yArr[j])?yArr[j]:0;
+                const w = Number.isFinite(wA[j])?wA[j]:1;
+                const t = (mode==='causalRight') ? (j - (L-1))/dR : (j - m)/dC;
+                let tk = 1.0; S[0]+=w; for (let k=1;k<=2*p;k++){ tk*=t; S[k]+=w*tk; }
+                tk=1.0; rhs[0]+=w*y; for (let k=1;k<=p;k++){ tk*=t; rhs[k]+=w*y*tk; }
+            }
+        
+            const n = p+1, ATA = new Float64Array(n*n), idx=(r,c)=>r*n+c;
+            for (let r=0;r<n;r++) for (let c=0;c<n;c++) ATA[idx(r,c)] = S[r+c];
+            for (let d=0; d<n; d++) ATA[idx(d,d)] += eps;
+        
+            const rhs4 = new Float64Array(4); rhs4.set(rhs);
+            const ATA4 = new Float64Array(16);
+            for (let r=0;r<n;r++) for (let c=0;c<n;c++) ATA4[r*4+c]=ATA[idx(r,c)];
+            for (let d=n; d<4; d++) ATA4[d*4+d] = 1;
+        
+            const coef = solve4x4(ATA4, rhs4);
+        
+            let val = 0, tk = 1;
+            for (let k=0;k<n;k++){ if (k>0) tk*=evalT; val += coef[k]*tk; }
+            if (!Number.isFinite(val)){
+                let sw=0, sy=0; for (let j=0;j<L;j++){ const w=Number.isFinite(wA[j])?wA[j]:1; const y=Number.isFinite(yArr[j])?yArr[j]:0; sw+=w; sy+=w*y; }
+                val = sy/(sw||1);
+            }
+            return val;
+        }
+        
+        function sgCenterFitWeighted(yArr, wArr, order=3, epsilon=1e-8){
+            return sgPolyFitWeightedEval(yArr, wArr, Math.min(3, order|0), 0, 'center', epsilon);
+        }
+        
+        function kalmanFilter(data, R = 0.1, Q = 0.01) {
+            const n = data.length / 3;
+            const result = new Float32Array(data.length);
+            
+            const state = new Float32Array(6);
+            
+            state[0] = data[0];
+            state[1] = data[1];
+            state[2] = data[2];
+            
+            const dt = 1.0;
+            const K = 0.3 + R * 2;
+            
+            for (let i = 0; i < n; i++) {
+                const predictedState = new Float32Array(6);
+                predictedState[0] = state[0] + state[3] * dt;
+                predictedState[1] = state[1] + state[4] * dt;
+                predictedState[2] = state[2] + state[5] * dt;
+                predictedState[3] = state[3];
+                predictedState[4] = state[4];
+                predictedState[5] = state[5];
+                
+                state[0] = predictedState[0] + K * (data[i * 3] - predictedState[0]);
+                state[1] = predictedState[1] + K * (data[i * 3 + 1] - predictedState[1]);
+                state[2] = predictedState[2] + K * (data[i * 3 + 2] - predictedState[2]);
+                
+                if (i > 0) {
+                    state[3] = (state[0] - result[(i-1) * 3]) / dt * (1 - Q);
+                    state[4] = (state[1] - result[(i-1) * 3 + 1]) / dt * (1 - Q);
+                    state[5] = (state[2] - result[(i-1) * 3 + 2]) / dt * (1 - Q);
+                }
+                
+                result[i * 3] = state[0];
+                result[i * 3 + 1] = state[1];
+                result[i * 3 + 2] = state[2];
+            }
+            
+            return result;
+        }
+        
+        function hpstmDemo(data, manifoldFunc, lambda = 0.01, iterations = 6) {
+            const n = data.length / 3;
+            let result = new Float32Array(data);
+            
+            for (let i = 0; i < n; i++) {
+                const x = data[i * 3];
+                const z = data[i * 3 + 2];
+                const y = manifoldFunc(x, z);
+                
+                result[i * 3] = x;
+                result[i * 3 + 1] = y * 0.8 + data[i * 3 + 1] * 0.2;
+                result[i * 3 + 2] = z;
+            }
+            
+            for (let iter = 0; iter < iterations; iter++) {
+                const temp = new Float32Array(result);
+                
+                for (let i = 1; i < n - 1; i++) {
+                    const x0 = result[(i-1) * 3];
+                    const z0 = result[(i-1) * 3 + 2];
+                    const x1 = result[i * 3];
+                    const z1 = result[i * 3 + 2];
+                    const x2 = result[(i+1) * 3];
+                    const z2 = result[(i+1) * 3 + 2];
+                    
+                    const alpha = Math.min(0.8, lambda * 3);
+                    const smoothX = x1 + alpha * ((x0 - x1) + (x2 - x1)) * 0.5;
+                    const smoothZ = z1 + alpha * ((z0 - z1) + (z2 - z1)) * 0.5;
+                    
+                    const dataWeight = 0.3 / (iter + 1);
+                    const finalX = smoothX * (1 - dataWeight) + data[i * 3] * dataWeight;
+                    const finalZ = smoothZ * (1 - dataWeight) + data[i * 3 + 2] * dataWeight;
+                    
+                    temp[i * 3] = finalX;
+                    temp[i * 3 + 1] = manifoldFunc(finalX, finalZ);
+                    temp[i * 3 + 2] = finalZ;
+                }
+                
+                temp[1] = manifoldFunc(temp[0], temp[2]);
+                temp[(n-1) * 3 + 1] = manifoldFunc(temp[(n-1) * 3], temp[(n-1) * 3 + 2]);
+                
+                result = temp;
+            }
+            
+            const geodesicSmoothed = new Float32Array(result);
+            const geoWeight = Math.min(0.5, lambda * 2);
+            
+            for (let i = 1; i < n - 1; i++) {
+                const x = result[i * 3];
+                const z = result[i * 3 + 2];
+                const x0 = result[(i-1) * 3];
+                const z0 = result[(i-1) * 3 + 2];
+                const x2 = result[(i+1) * 3];
+                const z2 = result[(i+1) * 3 + 2];
+                
+                const midX = (x0 + x2) / 2;
+                const midZ = (z0 + z2) / 2;
+                
+                geodesicSmoothed[i * 3] = x * (1 - geoWeight) + midX * geoWeight;
+                geodesicSmoothed[i * 3 + 2] = z * (1 - geoWeight) + midZ * geoWeight;
+                geodesicSmoothed[i * 3 + 1] = manifoldFunc(geodesicSmoothed[i * 3], geodesicSmoothed[i * 3 + 2]);
+            }
+            
+            for (let i = 0; i < n; i++) {
+                const x = geodesicSmoothed[i * 3];
+                const z = geodesicSmoothed[i * 3 + 2];
+                geodesicSmoothed[i * 3 + 1] = manifoldFunc(x, z);
+            }
+            
+            return geodesicSmoothed;
+        }
+
+        function hpstmCausalLeft(
+            data, manifoldFunc,
+            W=32, lambda=0.02, iters=1, noiseSigma=0.5
+            ){
+            const T = data.length/3;
+            const m = Math.max(7, (Math.floor(W/2)*2 + 1));
+            const huberDelta = 3.0 * noiseSigma;
+            const x = new Float32Array(T), z = new Float32Array(T), y = new Float32Array(T);
+            for (let i=0;i<T;i++){ x[i]=data[3*i]; z[i]=data[3*i+2]; y[i]=data[3*i+1]; }
+
+            const xNew = new Float32Array(T), zNew = new Float32Array(T);
+
+            const wCausal = new Float64Array(m);
+            for (let j=0;j<m;j++){
+                const u = (j+1)/m;
+                wCausal[j] = 0.5 - 0.5*Math.cos(Math.PI*u);
+            }
+
+            for (let it=0; it<iters; it++){
+                for (let i=0;i<T;i++){
+                    const a = Math.max(0, i-(m-1)), b = i, L = b-a+1;
+                    const yx = new Float64Array(L), yz = new Float64Array(L), w = new Float64Array(L);
+                    const start = m - L;
+
+                    for (let j=0;j<L;j++){
+                        const tIdx = a + j;
+                        const rx = x[tIdx] - data[3*tIdx];
+                        const rz = z[tIdx] - data[3*tIdx+2];
+                        const r  = Math.hypot(rx, rz);
+                        const rw = (r <= huberDelta) ? 1.0 : (huberDelta / (r + 1e-9));
+                        w[j]  = rw * wCausal[start + j];
+                        yx[j] = x[tIdx]; yz[j] = z[tIdx];
+                    }
+
+                    const ord   = (L < 9) ? 2 : 3;
+                    const delta = 1 / Math.max(2, L-1);
+                    let xf = sgPolyFitWeightedEval(yx, w, ord, -delta, 'causalRight');
+                    let zf = sgPolyFitWeightedEval(yz, w, ord, -delta, 'causalRight');
+
+                    if (i>0 && lambda>0){
+                        const lapX = (i<T-1? x[i+1]:x[i]) - 2*x[i] + (i>0? x[i-1]:x[i]);
+                        const lapZ = (i<T-1? z[i+1]:z[i]) - 2*z[i] + (i>0? z[i-1]:z[i]);
+                        const alpha = Math.min(0.25, 1.0*lambda);
+                        xf -= alpha*lapX; zf -= alpha*lapZ;
+                    }
+
+                    xNew[i]=xf; zNew[i]=zf;
+                }
+                for (let i=0;i<T;i++){ x[i]=xNew[i]; z[i]=zNew[i]; y[i]=manifoldFunc(x[i],z[i]); }
+            }
+
+            const out = new Float32Array(data.length);
+            for (let i=0;i<T;i++){ out[3*i]=x[i]; out[3*i+1]=y[i]; out[3*i+2]=z[i]; }
+            return out;
+        }
+
+        function hpstmWindowed(
+            data, manifoldFunc,
+            W=32, lambda=0.02, iters=2, noiseSigma=0.5,
+            opts={}
+        ){
+            const T = data.length/3;
+            const m = Math.max(3, (Math.floor(W/2)*2 + 1));
+            const half = (m-1)>>1;
+            const mirrorEdge = opts.mirrorEdge ?? true;
+            const huberDelta = (opts.huberK ?? 1.5) * noiseSigma;
+          
+            let x = new Float32Array(T), z = new Float32Array(T);
+            for (let i=0;i<T;i++){ x[i]=data[3*i]; z[i]=data[3*i+2]; }
+            const xNew = new Float32Array(T), zNew = new Float32Array(T), yOut = new Float32Array(T);
+          
+            const tri = new Float64Array(m);
+            for (let j=0;j<m;j++){ const d=Math.abs(j-half); tri[j]=1.0 - d/(half+1); }
+          
+            for (let it=0; it<iters; it++){
+                for (let i=0;i<T;i++){
+                    const a = i - half, L = m;
+                    const yx = new Float64Array(L), yz = new Float64Array(L), w = new Float64Array(L);
+          
+                    for (let j=0;j<L;j++){
+                        const t  = a + j;
+                        const ti = mirrorEdge ? reflIdx(t, T) : Math.max(0, Math.min(T-1, t));
+                        const rx = x[ti] - data[3*ti];
+                        const rz = z[ti] - data[3*ti+2];
+                        const r  = Math.hypot(rx, rz);
+                        const rw = (r <= huberDelta) ? 1.0 : (huberDelta / (r + 1e-9));
+                        w[j]  = rw * tri[j];
+                        yx[j] = x[ti]; yz[j] = z[ti];
+                    }
+          
+                    let xFit = sgCenterFitWeighted(yx, w, 3);
+                    let zFit = sgCenterFitWeighted(yz, w, 3);
+          
+                    if (i>0 && i<T-1 && lambda>0){
+                        const lapX = x[i-1] - 2*x[i] + x[i+1];
+                        const lapZ = z[i-1] - 2*z[i] + z[i+1];
+                        const alpha = Math.min(0.5, 2.0*lambda);
+                        xFit -= alpha*lapX; zFit -= alpha*lapZ;
+                    }
+          
+                    xNew[i]=xFit; zNew[i]=zFit;
+                }
+                for (let i=0;i<T;i++){ x[i]=xNew[i]; z[i]=zNew[i]; yOut[i]=manifoldFunc(x[i],z[i]); }
+            }
+          
+            const out = new Float32Array(data.length);
+            for (let i=0;i<T;i++){ out[3*i]=x[i]; out[3*i+1]=yOut[i]; out[3*i+2]=z[i]; }
+            return out;
+        }
+        
+        function hpstmEdgeEnhanced(
+            data, manifoldFunc,
+            W=32, lambda=0.02, itersCenter=2, noiseSigma=0.5
+        ){
+            const T = data.length/3;
+            const half = Math.max(1, Math.floor((Math.floor(W/2)*2 + 1 - 1)/2));
+            const centered = hpstmWindowed(data, manifoldFunc, W, lambda, itersCenter, noiseSigma, {mirrorEdge:true});
+          
+            const f = hpstmCausalLeft(data, manifoldFunc, W, lambda*0.8, 1, noiseSigma);
+          
+            const rev = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+                rev[3*i  ] = data[3*(T-1-i)  ];
+                rev[3*i+1] = data[3*(T-1-i)+1];
+                rev[3*i+2] = data[3*(T-1-i)+2];
+            }
+            const bRev = hpstmCausalLeft(rev, manifoldFunc, W, lambda*0.8, 1, noiseSigma);
+            const b = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+                b[3*i  ] = bRev[3*(T-1-i)  ];
+                b[3*i+1] = bRev[3*(T-1-i)+1];
+                b[3*i+2] = bRev[3*(T-1-i)+2];
+            }
+          
+            const out = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+                let x, z;
+                if (i < half){
+                    const s = smoothstep((i+1)/(half+1));
+                    x = (1-s)*f[3*i]     + s*centered[3*i];
+                    z = (1-s)*f[3*i+2]   + s*centered[3*i+2];
+                } else if (i > T-1-half){
+                    const s = smoothstep((T-i)/(half+1));
+                    x = (1-s)*b[3*i]     + s*centered[3*i];
+                    z = (1-s)*b[3*i+2]   + s*centered[3*i+2];
+                } else {
+                    x = centered[3*i]; z = centered[3*i+2];
+                }
+                const y = manifoldFunc(x, z);
+                out[3*i  ] = x; out[3*i+1] = y; out[3*i+2] = z;
+            }
+            return out;
+        }
+
+        // Scene Configurations
+        const GLOBAL_BOUNDS = { xMin: -22, xMax: 22, zMin: -22, zMax: 22 };
+        const PAD = 1.1;
+        
+        function lerpMap(v, a0, a1, b0, b1) {
+            const t = (v - a0) / (a1 - a0 || 1e-9);
+            return b0 + t * (b1 - b0);
+        }
+        
+        const sceneConfigs = {
+            spiral: {
+                generator: (t) => {
+                    const angle = t * Math.PI * 3.5;
+                    const radius = 15 * (1 - t * 0.4);
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    return 10 + Math.sin(x * 0.15) * 3 + 
+                           Math.cos(y * 0.15) * 2 + 
+                           Math.sin(x * y * 0.01) * 1.5;
+                },
+                bounds: { xMin: -20, xMax: 20, yMin: -20, yMax: 20 }
+            },
+            
+            's-curve': {
+                generator: (t) => {
+                    const x = (t - 0.5) * 30;
+                    const y = 10 * Math.sin(t * Math.PI * 2);
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    return 12 + Math.cos(x * 0.1) * 3 + Math.sin(y * 0.15) * 2;
+                },
+                bounds: { xMin: -20, xMax: 20, yMin: -15, yMax: 15 }
+            },
+            
+            'sharp-turn': {
+                generator: (t) => {
+                    let x, y;
+                    if (t < 0.45) {
+                        x = -15 + t * 66.67;
+                        y = 0;
+                    } else if (t < 0.55) {
+                        const localT = (t - 0.45) / 0.1;
+                        const angle = localT * Math.PI / 2;
+                        x = 15 - 5 * Math.sin(angle);
+                        y = 5 * (1 - Math.cos(angle));
+                    } else {
+                        x = 10;
+                        y = 5 + (t - 0.55) / 0.45 * 10;
+                    }
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    return 10 + Math.exp(-((x*x + y*y) / 200)) * 5;
+                },
+                bounds: { xMin: -20, xMax: 20, yMin: -5, yMax: 20 }
+            },
+            
+            outliers: {
+                generator: (t) => {
+                    const angle = t * Math.PI * 2;
+                    const x = Math.cos(angle) * 12;
+                    const y = Math.sin(angle) * 12;
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    const r = Math.sqrt(x*x + y*y);
+                    return 10 + Math.sin(r * 0.3) * 2 + Math.cos(Math.atan2(y, x) * 3) * 1;
+                },
+                bounds: { xMin: -15, xMax: 15, yMin: -15, yMax: 15 }
+            }
+        };
+
+        // Global app state
+        const appState = {
+            currentMode: 'mechanism',
+            mechanismApp: null,
+            comparisonApp: null,
+            isTransitioning: false,
+            currentScene: null,
+            renderer: null,
+            camera: null,
+            animationStates: {
+                manifold: { current: 1, target: 1 },
+                noisy: { current: 1, target: 1 },
+                trajectory: { current: 1, target: 1 },
+                transformer: { current: 1, target: 1 },
+                grid: { current: 0.2, target: 0.2 }
+            }
+        };
+        
+        // Shared renderer and camera setup
+        function initSharedRenderer() {
+            const container = document.getElementById('canvas-container');
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            appState.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+            
+            appState.renderer = new THREE.WebGLRenderer({ 
+                antialias: true, 
+                alpha: true,
+                logarithmicDepthBuffer: true
+            });
+            appState.renderer.setSize(width, height);
+            appState.renderer.shadowMap.enabled = false;
+            appState.renderer.sortObjects = true;
+            appState.renderer.physicallyCorrectLights = true;
+            
+            container.appendChild(appState.renderer.domElement);
+        }
+        
+        // Mode switching logic
+        const modeSwitch = document.getElementById('mode-switch');
+        const title = document.getElementById('title');
+        const statusPanel = document.getElementById('status-panel');
+        const controlPanel = document.getElementById('control-panel');
+        const legend = document.getElementById('legend');
+        const labelsContainer = document.getElementById('labels-container');
+        const canvasContainer = document.getElementById('canvas-container');
+        
+        async function switchMode() {
+            if (appState.isTransitioning) return;
+            appState.isTransitioning = true;
+            
+            // Start canvas fade
+            canvasContainer.classList.add('switching');
+            
+            // Animate title
+            title.classList.add('switching');
+            
+            // Hide current mode elements
+            if (appState.currentMode === 'mechanism') {
+                statusPanel.classList.add('hidden');
+                // Hide mechanism labels
+                document.querySelectorAll('.label-bubble:not(.algo-label)').forEach(label => {
+                    label.style.transition = 'all 0.3s ease';
+                    label.style.opacity = '0';
+                    label.style.transform = 'translateX(-30px)';
+                });
+            } else {
+                controlPanel.classList.remove('visible');
+                legend.classList.remove('visible');
+                // Hide algorithm labels
+                document.querySelectorAll('.algo-label').forEach(label => {
+                    label.style.transition = 'all 0.3s ease';
+                    label.style.opacity = '0';
+                    label.style.transform = 'translateX(-30px)';
+                });
+            }
+            
+            // Wait for fade out
+            await new Promise(resolve => setTimeout(resolve, 400));
+            
+            // Switch mode
+            if (appState.currentMode === 'mechanism') {
+                appState.currentMode = 'comparison';
+                modeSwitch.textContent = 'Back to Mechanism';
+                title.classList.add('comparison-mode');
+                document.querySelector('#title .main-title').textContent = 'Algorithm Comparison';
+                document.querySelector('#title .subtitle').textContent = 'HPSTM vs Classical Methods';
+                
+                // Hide mechanism labels
+                document.querySelectorAll('.label-bubble:not(.algo-label)').forEach(label => {
+                    label.style.display = 'none';
+                });
+                
+                // Show algorithm labels
+                document.querySelectorAll('.algo-label').forEach((label, index) => {
+                    label.style.display = 'block';
+                    label.style.opacity = '0';
+                    label.style.transform = 'translateX(-20px)';
+                    setTimeout(() => {
+                        label.style.transition = 'all 0.3s ease';
+                        label.style.opacity = '1';
+                        label.style.transform = 'translateX(0)';
+                    }, 100 * (index + 1));
+                });
+                
+                // Show comparison controls
+                setTimeout(() => {
+                    controlPanel.classList.add('visible');
+                    legend.classList.add('visible');
+                }, 200);
+                
+                // Initialize comparison app if needed
+                if (!appState.comparisonApp) {
+                    appState.comparisonApp = await initComparisonApp();
+                } else {
+                    appState.comparisonApp.resume();
+                }
+                
+                if (appState.mechanismApp) {
+                    appState.mechanismApp.pause();
+                }
+            } else {
+                appState.currentMode = 'mechanism';
+                modeSwitch.textContent = 'View Comparison';
+                title.classList.remove('comparison-mode');
+                document.querySelector('#title .main-title').textContent = 'HPSTM';
+                document.querySelector('#title .subtitle').textContent = 'Pose Sequence Refinement on Manifold';
+                
+                // Hide algorithm labels
+                document.querySelectorAll('.algo-label').forEach(label => {
+                    label.style.display = 'none';
+                });
+                
+                // Show mechanism labels
+                document.querySelectorAll('.label-bubble:not(.algo-label)').forEach((label, index) => {
+                    label.style.display = 'block';
+                    label.style.opacity = '0';
+                    label.style.transform = 'translateX(-20px)';
+                    setTimeout(() => {
+                        label.style.transition = 'all 0.3s ease';
+                        label.style.opacity = '1';
+                        label.style.transform = 'translateX(0)';
+                    }, 100 * (index + 1));
+                });
+                
+                // Show mechanism controls
+                setTimeout(() => {
+                    statusPanel.classList.remove('hidden');
+                }, 200);
+                
+                if (appState.mechanismApp) {
+                    appState.mechanismApp.resume();
+                } else {
+                    appState.mechanismApp = await initMechanismApp();
+                }
+                
+                if (appState.comparisonApp) {
+                    appState.comparisonApp.pause();
+                }
+            }
+            
+            // Clear detail card
+            const detailCard = document.getElementById('detail-card');
+            detailCard.classList.remove('active');
+            
+            // Remove title switching class
+            setTimeout(() => {
+                title.classList.remove('switching');
+                canvasContainer.classList.remove('switching');
+            }, 300);
+            
+            // End transition
+            setTimeout(() => {
+                appState.isTransitioning = false;
+            }, 600);
+        }
+        
+        modeSwitch.addEventListener('click', switchMode);
+        
+        // ========== Unified Detail Card System ==========
+        class UnifiedDetailCardSystem {
+            constructor() {
+                this.card = document.getElementById('detail-card');
+                this.titleElement = document.getElementById('detail-card-title');
+                this.contentElement = document.getElementById('detail-card-content');
+                
+                this.currentTheme = null;
+                this.isOpen = false;
+                this.hoverTimeout = null;
+                this.closeTimeout = null;
+                this.transitionTimeout = null;
+                
+                // Content definitions for both modes
+                this.cardContents = {
+                    // Mechanism mode contents
+                    noisy: {
+                        title: 'Noisy Input Sequence',
+                        content: `
+                            <p><strong>These red points represent the raw, noisy observations of human poses.</strong></p>
+                            <p>In real-world motion capture and pose estimation systems, we never get perfect data. Instead, we receive noisy measurements that scatter around the true motion path due to:</p>
+                            <ul class="detail-card-list">
+                                <li>Sensor measurement errors</li>
+                                <li>Occlusions and tracking failures</li>
+                                <li>Environmental interference</li>
+                                <li>Quantization and calibration issues</li>
+                            </ul>
+                            <p>The HPSTM system uses a sliding Transformer window to process these noisy points sequentially, absorbing them and refining them into a smooth, physically plausible motion trajectory.</p>
+                        `,
+                        theme: 'noisy'
+                    },
+                    manifold: {
+                        title: 'Human Pose Manifold',
+                        content: `
+                            <p><strong>The blue curved surface represents the manifold of valid human poses in high-dimensional space.</strong></p>
+                            <p>Not all configurations in pose space correspond to valid human poses. The human body has physical constraints:</p>
+                            <ul class="detail-card-list">
+                                <li>Joint angle limits and biomechanical constraints</li>
+                                <li>Bone length preservation</li>
+                                <li>Natural movement patterns</li>
+                                <li>Kinematic chain dependencies</li>
+                            </ul>
+                            <p>This manifold represents the subspace of all physically plausible human configurations.</p>
+                        `,
+                        theme: 'manifold'
+                    },
+                    trajectory: {
+                        title: 'Refined Trajectory',
+                        content: `
+                            <p><strong>The green path shows the smooth, continuous motion generated by the Transformer in real-time.</strong></p>
+                            <p>As the Transformer processes the noisy input sequence, it produces a refined trajectory that:</p>
+                            <ul class="detail-card-list">
+                                <li>Lies exactly on the pose manifold surface</li>
+                                <li>Maintains temporal coherence and smoothness</li>
+                                <li>Preserves the overall motion characteristics</li>
+                                <li>Eliminates jitter and measurement noise</li>
+                            </ul>
+                        `,
+                        theme: 'trajectory'
+                    },
+                    transformer: {
+                        title: 'Transformer Window',
+                        content: `
+                            <p><strong>The transparent purple tube represents the Transformer's sliding attention window.</strong></p>
+                            <p>Key characteristics of the processing window:</p>
+                            <ul class="detail-card-list">
+                                <li><strong>Window Size:</strong> ±16 frames sufficient for every kind of human motion</li>
+                                <li><strong>Structure:</strong> Hollow tube with visible thickness showing the processing region</li>
+                                <li><strong>Processing:</strong> All poses within this window are processed simultaneously using self-attention</li>
+                                <li><strong>Sliding Motion:</strong> Moves continuously along the trajectory at constant speed</li>
+                            </ul>
+                        `,
+                        theme: 'transformer'
+                    },
+                    // Comparison mode contents
+                    hpstm: {
+                        title: 'HPSTM Algorithm',
+                        content: `
+                            <p><strong>Human Pose Sequence Transformer on Manifold - our novel approach to motion refinement.</strong></p>
+                            <p>HPSTM uniquely combines:</p>
+                            <ul class="detail-card-list">
+                                <li><strong>Manifold Awareness:</strong> Explicitly projects all refined poses onto the valid pose manifold</li>
+                                <li><strong>Transformer Architecture:</strong> Uses self-attention to capture long-range temporal dependencies</li>
+                                <li><strong>Online Processing:</strong> Operates with a sliding window for real-time applications</li>
+                                <li><strong>Geodesic Smoothing:</strong> Ensures trajectories follow natural paths on the manifold surface</li>
+                            </ul>
+                            <p>The yellow trajectory shows HPSTM's output, which maintains both smoothness and anatomical validity.</p>
+                        `,
+                        theme: 'hpstm'
+                    },
+                    kalman: {
+                        title: 'Kalman Filter',
+                        content: `
+                            <p><strong>A classical state estimation technique using a constant velocity motion model.</strong></p>
+                            <p>The Kalman filter assumes:</p>
+                            <ul class="detail-card-list">
+                                <li>Linear dynamics with Gaussian noise</li>
+                                <li>Constant velocity between measurements</li>
+                                <li>No knowledge of pose constraints</li>
+                            </ul>
+                            <p>While effective for simple linear systems, it cannot enforce anatomical constraints and may produce physically implausible poses.</p>
+                        `,
+                        theme: 'kalman'
+                    },
+                    sg: {
+                        title: 'Savitzky-Golay Filter',
+                        content: `
+                            <p><strong>A polynomial smoothing filter that fits local polynomial functions to data windows.</strong></p>
+                            <p>Characteristics:</p>
+                            <ul class="detail-card-list">
+                                <li>Preserves higher moments (peaks and valleys) better than moving averages</li>
+                                <li>Works in Euclidean space without manifold awareness</li>
+                                <li>Can introduce artifacts at boundaries</li>
+                                <li>No enforcement of physical constraints</li>
+                            </ul>
+                        `,
+                        theme: 'sg'
+                    },
+                    gt: {
+                        title: 'Ground Truth',
+                        content: `
+                            <p><strong>The original, clean motion trajectory without any noise.</strong></p>
+                            <p>This represents the ideal target that all algorithms attempt to reconstruct from noisy observations. The green trajectory shows the true path on the manifold.</p>
+                        `,
+                        theme: 'gt'
+                    }
+                };
+                
+                // Event listeners
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.isOpen) {
+                        this.close();
+                    }
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (this.isOpen && 
+                        !e.target.closest('.detail-card') && 
+                        !e.target.closest('.label-bubble')) {
+                        this.close();
+                    }
+                });
+            }
+            
+            show(contentId, delay = 0) {
+                clearTimeout(this.hoverTimeout);
+                clearTimeout(this.closeTimeout);
+                
+                if (delay === 0) {
+                    this._showContent(contentId);
+                } else {
+                    this.hoverTimeout = setTimeout(() => {
+                        this._showContent(contentId);
+                    }, delay);
+                }
+            }
+            
+            _showContent(contentId) {
+                const content = this.cardContents[contentId];
+                if (!content) return;
+                
+                if (!this.isOpen) {
+                    this.card.setAttribute('data-theme', content.theme);
+                    this.titleElement.textContent = content.title;
+                    this.contentElement.innerHTML = content.content;
+                    this.card.classList.add('active');
+                    this.isOpen = true;
+                    this.currentTheme = contentId;
+                } else if (this.currentTheme !== contentId) {
+                    this.switchContent(contentId);
+                }
+            }
+            
+            switchContent(contentId) {
+                const content = this.cardContents[contentId];
+                if (!content) return;
+                
+                clearTimeout(this.transitionTimeout);
+                
+                this.card.classList.add('transitioning');
+                this.transitionTimeout = setTimeout(() => {
+                    this.card.setAttribute('data-theme', content.theme);
+                    this.titleElement.textContent = content.title;
+                    this.contentElement.innerHTML = content.content;
+                    this.currentTheme = contentId;
+                    
+                    setTimeout(() => {
+                        this.card.classList.remove('transitioning');
+                    }, 50);
+                }, 150);
+            }
+            
+            hide(delay = 80) {
+                clearTimeout(this.hoverTimeout);
+                clearTimeout(this.closeTimeout);
+                clearTimeout(this.transitionTimeout);
+                
+                this.closeTimeout = setTimeout(() => {
+                    this.close();
+                }, delay);
+            }
+            
+            close() {
+                clearTimeout(this.hoverTimeout);
+                clearTimeout(this.closeTimeout);
+                clearTimeout(this.transitionTimeout);
+                
+                this.card.classList.remove('active');
+                this.card.classList.remove('transitioning');
+                this.isOpen = false;
+                this.currentTheme = null;
+                
+                setTimeout(() => {
+                    if (!this.isOpen) {
+                        this.titleElement.textContent = '';
+                        this.contentElement.innerHTML = '';
+                        this.card.removeAttribute('data-theme');
+                    }
+                }, 250);
+            }
+            
+            cancelDelayedShow() {
+                clearTimeout(this.hoverTimeout);
+            }
+            
+            cancelDelayedHide() {
+                clearTimeout(this.closeTimeout);
+            }
+        }
+        
+        // Initialize unified detail card system
+        const detailCard = new UnifiedDetailCardSystem();
+        
+        // Setup label interactions
+        function setupLabelInteractions() {
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            
+            // Mechanism mode labels
+            const mechanismLabels = [
+                { id: 'noisy-label', content: 'noisy', highlight: 'noisy' },
+                { id: 'manifold-label', content: 'manifold', highlight: 'manifold' },
+                { id: 'trajectory-label', content: 'trajectory', highlight: 'trajectory' },
+                { id: 'transformer-label', content: 'transformer', highlight: 'transformer' }
+            ];
+            
+            // Comparison mode labels
+            const comparisonLabels = [
+                { id: 'algo-hpstm', content: 'hpstm' },
+                { id: 'algo-kalman', content: 'kalman' },
+                { id: 'algo-sg', content: 'sg' },
+                { id: 'algo-gt', content: 'gt' }
+            ];
+            
+            // Setup mechanism labels
+            mechanismLabels.forEach(({ id, content, highlight }) => {
+                const label = document.getElementById(id);
+                if (!label) return;
+                
+                label.addEventListener(isMobile ? 'click' : 'mouseenter', () => {
+                    if (appState.currentMode !== 'mechanism') return;
+                    
+                    detailCard.cancelDelayedHide();
+                    label.classList.add('active');
+                    
+                    // Handle highlighting
+                    if (highlight && appState.mechanismApp) {
+                        appState.mechanismApp.greyOutComponents(highlight);
+                    }
+                    
+                    if (detailCard.isOpen && detailCard.currentTheme !== content) {
+                        detailCard.switchContent(content);
+                    } else if (!detailCard.isOpen) {
+                        detailCard.show(content, 30);
+                    }
+                });
+                
+                if (!isMobile) {
+                    label.addEventListener('mouseleave', () => {
+                        if (appState.currentMode !== 'mechanism') return;
+                        
+                        label.classList.remove('active');
+                        
+                        if (appState.mechanismApp) {
+                            appState.mechanismApp.restoreAllMaterials();
+                        }
+                        
+                        setTimeout(() => {
+                            const anyHovered = mechanismLabels.some(l => 
+                                document.getElementById(l.id)?.matches(':hover'));
+                            const cardHovered = detailCard.card.matches(':hover');
+                            if (!anyHovered && !cardHovered) {
+                                detailCard.hide(100);
+                            }
+                        }, 20);
+                    });
+                }
+            });
+            
+            // Setup comparison labels
+            comparisonLabels.forEach(({ id, content }) => {
+                const label = document.getElementById(id);
+                if (!label) return;
+                
+                label.addEventListener(isMobile ? 'click' : 'mouseenter', () => {
+                    if (appState.currentMode !== 'comparison') return;
+                    
+                    detailCard.cancelDelayedHide();
+                    
+                    // Update active state
+                    comparisonLabels.forEach(l => {
+                        document.getElementById(l.id)?.classList.remove('active');
+                    });
+                    label.classList.add('active');
+                    
+                    if (detailCard.isOpen && detailCard.currentTheme !== content) {
+                        detailCard.switchContent(content);
+                    } else if (!detailCard.isOpen) {
+                        detailCard.show(content, 30);
+                    }
+                    
+                    // Handle algorithm selection
+                    if (appState.comparisonApp) {
+                        const algoMap = {
+                            'algo-hpstm': 'HPSTM',
+                            'algo-kalman': 'Kalman',
+                            'algo-sg': 'SG',
+                            'algo-gt': 'GT'
+                        };
+                        
+                        if (algoMap[id]) {
+                            appState.comparisonApp.setAlgorithm(algoMap[id]);
+                        }
+                    }
+                });
+                
+                if (!isMobile) {
+                    label.addEventListener('mouseleave', () => {
+                        if (appState.currentMode !== 'comparison') return;
+                        
+                        setTimeout(() => {
+                            const anyHovered = comparisonLabels.some(l => 
+                                document.getElementById(l.id)?.matches(':hover'));
+                            const cardHovered = detailCard.card.matches(':hover');
+                            if (!anyHovered && !cardHovered) {
+                                detailCard.hide(100);
+                            }
+                        }, 20);
+                    });
+                }
+            });
+            
+            // Detail card hover handling
+            if (!isMobile) {
+                detailCard.card.addEventListener('mouseenter', () => {
+                    detailCard.cancelDelayedHide();
+                    
+                    // Maintain highlighting in mechanism mode
+                    if (appState.currentMode === 'mechanism' && appState.mechanismApp) {
+                        const labelMap = {
+                            'noisy': 'noisy',
+                            'manifold': 'manifold',
+                            'trajectory': 'trajectory',
+                            'transformer': 'transformer'
+                        };
+                        const highlight = labelMap[detailCard.currentTheme];
+                        if (highlight) {
+                            appState.mechanismApp.greyOutComponents(highlight);
+                        }
+                    }
+                });
+                
+                detailCard.card.addEventListener('mouseleave', () => {
+                    if (appState.currentMode === 'mechanism' && appState.mechanismApp) {
+                        appState.mechanismApp.restoreAllMaterials();
+                    }
+                    
+                    setTimeout(() => {
+                        const allLabels = [...mechanismLabels, ...comparisonLabels];
+                        const anyHovered = allLabels.some(l => 
+                            document.getElementById(l.id)?.matches(':hover'));
+                        if (!anyHovered) {
+                            detailCard.hide(100);
+                        }
+                    }, 20);
+                });
+            }
+        }
+
+        // ========== Mechanism App Code ==========
+        async function initMechanismApp() {
+            if (appState.currentScene) {
+                // Clear the scene
+                while(appState.currentScene.children.length > 0) {
+                    const child = appState.currentScene.children[0];
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => mat.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                    appState.currentScene.remove(child);
+                }
+            }
+            
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050508);
+            scene.fog = new THREE.Fog(0x050508, 50, 150);
+            appState.currentScene = scene;
+            
+            // Camera setup
+            appState.camera.position.set(35, 45, 45);
+            appState.camera.lookAt(0, 10, 0);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
+            scene.add(ambientLight);
+
+            const hemi = new THREE.HemisphereLight(0x1d2333, 0x090909, 0.3);
+            scene.add(hemi);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
+            directionalLight.position.set(20, 40, 20);
+            directionalLight.target.position.set(0, 10, 0);
+            directionalLight.castShadow = false;
+            scene.add(directionalLight);
+            scene.add(directionalLight.target);
+            
+            const pointLight = new THREE.PointLight(0xa855f7, 25, 80, 2);
+            pointLight.position.set(-15, 25, -15);
+            scene.add(pointLight);
+            
+            const pointLight2 = new THREE.PointLight(0x10b981, 20, 60, 2);
+            pointLight2.position.set(10, 20, 10);
+            scene.add(pointLight2);
+            
+            const pointLight3 = new THREE.PointLight(0x3b82f6, 15, 70, 2);
+            pointLight3.position.set(0, 30, 0);
+            scene.add(pointLight3);
+            
+            const pointLight4 = new THREE.PointLight(0xef4444, 12, 50, 2);
+            pointLight4.position.set(20, 15, -10);
+            scene.add(pointLight4);
+            
+            // Create pose manifold surface
+            const manifoldGeometry = new THREE.PlaneGeometry(50, 50, 60, 60);
+            manifoldGeometry.rotateX(-Math.PI / 2);
+            
+            const manifoldBaseMaterial = new THREE.MeshPhongMaterial({
+                color: 0x3b82f6,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.35,
+                emissive: 0x3b82f6,
+                emissiveIntensity: 0.4,
+                depthWrite: false,
+                blending: THREE.NormalBlending,
+                shininess: 150
+            });
+            
+            const positionAttribute = manifoldGeometry.attributes.position;
+            for (let i = 0; i < positionAttribute.count; i++) {
+                const x = positionAttribute.getX(i);
+                const z = positionAttribute.getZ(i);
+                
+                const y = Math.sin(x * 0.15) * 4 + 
+                         Math.cos(z * 0.15) * 3 + 
+                         Math.sin(x * z * 0.01) * 2 + 10;
+                
+                positionAttribute.setY(i, y);
+            }
+            manifoldGeometry.computeVertexNormals();
+            
+            const manifoldBase = new THREE.Mesh(manifoldGeometry, manifoldBaseMaterial);
+            manifoldBase.receiveShadow = false;
+            manifoldBase.castShadow = false;
+            manifoldBase.renderOrder = 4;
+            scene.add(manifoldBase);
+            
+            const manifoldGlowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x6fb1ff,
+                transparent: true,
+                opacity: 0.15,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const manifoldGlow = new THREE.Mesh(manifoldGeometry.clone(), manifoldGlowMaterial);
+            manifoldGlow.renderOrder = 5;
+            scene.add(manifoldGlow);
+            
+            const edgeGeometry = new THREE.EdgesGeometry(manifoldGeometry);
+            const edgeMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x60a5fa, 
+                transparent: true, 
+                opacity: 0.5,
+                depthWrite: false,
+                fog: false
+            });
+            const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+            edges.castShadow = false;
+            edges.receiveShadow = false;
+            edges.renderOrder = 6;
+            scene.add(edges);
+            
+            const gridHelper = new THREE.GridHelper(60, 24, 0x2563eb, 0x1e40af);
+            gridHelper.position.y = 0;
+            gridHelper.material.opacity = 0.2;
+            gridHelper.material.transparent = true;
+            gridHelper.material.depthWrite = false;
+            gridHelper.renderOrder = -10;
+            scene.add(gridHelper);
+            
+            // Create the refined trajectory path
+            const trajectoryPoints = [];
+            const numPoints = 250;
+            
+            for (let i = 0; i <= numPoints; i++) {
+                const t = i / numPoints;
+                const angle = t * Math.PI * 3.5;
+                const radius = 15 * (1 - t * 0.4);
+                
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                const y = Math.sin(x * 0.15) * 4 + 
+                         Math.cos(z * 0.15) * 3 + 
+                         Math.sin(x * z * 0.01) * 2 + 10.1;
+                
+                trajectoryPoints.push(new THREE.Vector3(x, y, z));
+            }
+            
+            const trajectoryCurve = new THREE.CatmullRomCurve3(trajectoryPoints);
+            
+            // Create segmented trajectory
+            const trajectorySegments = [];
+            const segmentMaterials = [];
+            const numSegments = 1000;
+            
+            for (let i = 0; i < numSegments; i++) {
+                const t1 = i / numSegments;
+                const t2 = (i + 1) / numSegments;
+                
+                const segmentPoints = [];
+                for (let j = 0; j <= 10; j++) {
+                    const t = t1 + (t2 - t1) * (j / 10);
+                    segmentPoints.push(trajectoryCurve.getPoint(t));
+                }
+                
+                const segmentCurve = new THREE.CatmullRomCurve3(segmentPoints);
+                const segmentGeometry = new THREE.TubeGeometry(segmentCurve, 10, 0.3, 16, false);
+                
+                const segmentMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x10b981,
+                    emissive: 0x10b981,
+                    emissiveIntensity: 0.8,
+                    transparent: true,
+                    opacity: 0.7,
+                    depthWrite: true,
+                    shininess: 150
+                });
+                
+                const segmentMesh = new THREE.Mesh(segmentGeometry, segmentMaterial);
+                segmentMesh.castShadow = false;
+                segmentMesh.receiveShadow = false;
+                segmentMesh.visible = false;
+                segmentMesh.renderOrder = 10;
+                scene.add(segmentMesh);
+                
+                trajectorySegments.push(segmentMesh);
+                segmentMaterials.push(segmentMaterial);
+            }
+            
+            // Create noisy pose scatter points
+            const scatterGroup = new THREE.Group();
+            const sphereGeometry = new THREE.SphereGeometry(0.5, 20, 20);
+            const noisyMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xef4444,
+                emissive: 0xef4444,
+                emissiveIntensity: 1.2,
+                transparent: true,
+                opacity: 0.9,
+                depthWrite: true,
+                shininess: 150
+            });
+            
+            const numNoisyPoints = 100;
+            const noisyPoints = [];
+            for (let i = 0; i < numNoisyPoints; i++) {
+                const t = i / (numNoisyPoints - 1);
+                const basePoint = trajectoryCurve.getPoint(t);
+                
+                const noiseScale = 2;
+                const noiseX = (Math.random() - 0.5) * noiseScale;
+                const noiseY = (Math.random() - 0.5) * noiseScale * 1.5;
+                const noiseZ = (Math.random() - 0.5) * noiseScale;
+                
+                const point = new THREE.Mesh(sphereGeometry, noisyMaterial.clone());
+                point.material.transparent = true;
+                point.material.opacity = 0.9;
+                point.position.set(
+                    basePoint.x + noiseX,
+                    basePoint.y + noiseY,
+                    basePoint.z + noiseZ
+                );
+                point.castShadow = false;
+                point.receiveShadow = false;
+                point.renderOrder = 50;
+                point.userData = { 
+                    basePoint: basePoint.clone(),
+                    t: t,
+                    noise: new THREE.Vector3(noiseX, noiseY, noiseZ),
+                    absorbed: false,
+                    beingAbsorbed: false,
+                    originalOpacity: 0.9
+                };
+                scatterGroup.add(point);
+                noisyPoints.push(point);
+            }
+            scatterGroup.renderOrder = 50;
+            scene.add(scatterGroup);
+            
+            // Create key points
+            const keyPointsGroup = new THREE.Group();
+            const keyPointMaterial = new THREE.MeshPhongMaterial({
+                color: 0x10b981,
+                emissive: 0x10b981,
+                emissiveIntensity: 1.2,
+                transparent: true,
+                opacity: 0.8,
+                depthWrite: true,
+                shininess: 200
+            });
+            
+            for (let i = 0; i < 10; i++) {
+                const t = i / 9;
+                const point = trajectoryCurve.getPoint(t);
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.5, 24, 24),
+                    keyPointMaterial.clone()
+                );
+                sphere.material.transparent = true;
+                sphere.material.opacity = 0.8;
+                sphere.position.copy(point);
+                sphere.userData.t = t;
+                sphere.visible = false;
+                sphere.castShadow = false;
+                sphere.receiveShadow = false;
+                sphere.renderOrder = 30;
+                keyPointsGroup.add(sphere);
+            }
+            keyPointsGroup.renderOrder = 30;
+            scene.add(keyPointsGroup);
+            
+            // Create Transformer Pipeline
+            const transformerPipeline = new TransformerPipeline(scene, trajectoryCurve, noisyPoints);
+            
+            trajectorySegments.forEach(seg => {
+                seg.visible = false;
+            });
+            keyPointsGroup.children.forEach(sphere => {
+                sphere.visible = false;
+            });
+            
+            // Animation variables
+            let isPlaying = true;
+            let animationActive = true;
+            let wavePosition = 0;
+            let waveStartTime = performance.now();
+            const waveSpeed = 0.0035;
+            const gap = 0.12;
+            const cycleLen = 1 + gap;
+            
+            // Update processing status
+            function updateProcessingStatus(wavePosition, isPlaying) {
+                const stage = document.getElementById('processing-stage');
+                const rate = document.getElementById('processing-rate');
+                const fill = document.getElementById('processing-fill');
+                
+                if (isPlaying) {
+                    const effectivePosition = Math.min(wavePosition / 1, 1);
+                    stage.textContent = wavePosition > 1 ? 'Resetting' : 'Refining';
+                    rate.textContent = wavePosition > 1 ? 'Preparing...' : `${Math.round(effectivePosition * 100)}%`;
+                    fill.style.width = `${effectivePosition * 100}%`;
+                } else {
+                    stage.textContent = 'Paused';
+                    rate.textContent = `${Math.round(Math.min(wavePosition, 1) * 100)}%`;
+                    fill.style.width = `${Math.min(wavePosition, 1) * 100}%`;
+                }
+            }
+            
+            // Interactive rotation
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            let autoRotation = true;
+            
+            const initialRotation = {
+                x: -Math.PI / 10,
+                y: Math.PI / 4
+            };
+            
+            scene.rotation.x = initialRotation.x;
+            scene.rotation.y = initialRotation.y;
+            
+            appState.renderer.domElement.addEventListener('mousedown', function(e) {
+                if (appState.currentMode !== 'mechanism') return;
+                isDragging = true;
+                autoRotation = false;
+                previousMousePosition = {
+                    x: e.clientX,
+                    y: e.clientY
+                };
+            });
+            
+            appState.renderer.domElement.addEventListener('mousemove', function(e) {
+                if (!isDragging || appState.currentMode !== 'mechanism') return;
+                
+                const deltaMove = {
+                    x: e.clientX - previousMousePosition.x,
+                    y: e.clientY - previousMousePosition.y
+                };
+                
+                scene.rotation.y += deltaMove.x * 0.01;
+                scene.rotation.x += deltaMove.y * 0.01;
+                scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+                
+                previousMousePosition = {
+                    x: e.clientX,
+                    y: e.clientY
+                };
+            });
+            
+            appState.renderer.domElement.addEventListener('mouseup', function(e) {
+                isDragging = false;
+            });
+            
+            appState.renderer.domElement.addEventListener('mouseleave', function(e) {
+                isDragging = false;
+            });
+            
+            // Touch events
+            let touchStart = null;
+            
+            appState.renderer.domElement.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 1 && appState.currentMode === 'mechanism') {
+                    isDragging = true;
+                    autoRotation = false;
+                    touchStart = {
+                        x: e.touches[0].clientX,
+                        y: e.touches[0].clientY
+                    };
+                    previousMousePosition = touchStart;
+                }
+            });
+            
+            appState.renderer.domElement.addEventListener('touchmove', function(e) {
+                if (!isDragging || !touchStart || appState.currentMode !== 'mechanism') return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                const deltaMove = {
+                    x: touch.clientX - previousMousePosition.x,
+                    y: touch.clientY - previousMousePosition.y
+                };
+                
+                scene.rotation.y += deltaMove.x * 0.01;
+                scene.rotation.x += deltaMove.y * 0.01;
+                scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+                
+                previousMousePosition = {
+                    x: touch.clientX,
+                    y: touch.clientY
+                };
+            });
+            
+            // Space key to pause/play
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && appState.currentMode === 'mechanism') {
+                    e.preventDefault();
+                    isPlaying = !isPlaying;
+                    if (isPlaying) {
+                        waveStartTime = performance.now() - (wavePosition * 1000 / waveSpeed);
+                    }
+                }
+            });
+            
+            const animationSpeed = 0.15;
+            
+            function lerp(current, target, speed) {
+                return current + (target - current) * speed;
+            }
+            
+            function lerpColor(color, targetHex, factor) {
+                const targetColor = new THREE.Color(targetHex);
+                color.lerp(targetColor, factor);
+            }
+            
+            function restoreAllMaterials() {
+                appState.animationStates.manifold.target = 1;
+                appState.animationStates.noisy.target = 1;
+                appState.animationStates.trajectory.target = 1;
+                appState.animationStates.transformer.target = 1;
+                appState.animationStates.grid.target = 0.2;
+            }
+            
+            function greyOutComponents(except) {
+                appState.animationStates.manifold.target = except === 'manifold' ? 1 : 0;
+                appState.animationStates.noisy.target = except === 'noisy' ? 1 : 0;
+                appState.animationStates.trajectory.target = except === 'trajectory' ? 1 : 0;
+                appState.animationStates.transformer.target = except === 'transformer' ? 1 : 0;
+                appState.animationStates.grid.target = 0.05;
+            }
+            
+            // Animation loop
+            let time = 0;
+            function animate() {
+                if (animationActive && appState.currentMode === 'mechanism') {
+                    requestAnimationFrame(animate);
+                }
+                time += 0.01;
+                
+                // Update animation states
+                appState.animationStates.manifold.current = lerp(appState.animationStates.manifold.current, appState.animationStates.manifold.target, animationSpeed);
+                appState.animationStates.noisy.current = lerp(appState.animationStates.noisy.current, appState.animationStates.noisy.target, animationSpeed);
+                appState.animationStates.trajectory.current = lerp(appState.animationStates.trajectory.current, appState.animationStates.trajectory.target, animationSpeed);
+                appState.animationStates.transformer.current = lerp(appState.animationStates.transformer.current, appState.animationStates.transformer.target, animationSpeed);
+                appState.animationStates.grid.current = lerp(appState.animationStates.grid.current, appState.animationStates.grid.target, animationSpeed);
+                
+                // Apply manifold dimming
+                const manifoldFactor = appState.animationStates.manifold.current;
+                
+                lerpColor(manifoldBase.material.color, manifoldFactor > 0.5 ? 0x3b82f6 : 0xffffff, animationSpeed);
+                lerpColor(manifoldBase.material.emissive, manifoldFactor > 0.5 ? 0x3b82f6 : 0xffffff, animationSpeed);
+                manifoldBase.material.emissiveIntensity = lerp(manifoldBase.material.emissiveIntensity, manifoldFactor > 0.5 ? 0.4 : 0.1, animationSpeed);
+                manifoldBase.material.opacity = lerp(manifoldBase.material.opacity, manifoldFactor > 0.5 ? 0.35 : 0.15, animationSpeed);
+                
+                lerpColor(manifoldGlow.material.color, manifoldFactor > 0.5 ? 0x6fb1ff : 0xffffff, animationSpeed);
+                manifoldGlow.material.opacity = lerp(manifoldGlow.material.opacity, manifoldFactor > 0.5 ? 0.15 : 0.05, animationSpeed);
+                
+                lerpColor(edges.material.color, manifoldFactor > 0.5 ? 0x60a5fa : 0xffffff, animationSpeed);
+                edges.material.opacity = lerp(edges.material.opacity, manifoldFactor > 0.5 ? 0.5 : 0.15, animationSpeed);
+                
+                // Apply noisy points dimming
+                const noisyFactor = appState.animationStates.noisy.current;
+                scatterGroup.children.forEach(point => {
+                    if (!point.userData.absorbed && !point.userData.beingAbsorbed) {
+                        lerpColor(point.material.color, noisyFactor > 0.5 ? 0xef4444 : 0xffffff, animationSpeed);
+                        lerpColor(point.material.emissive, noisyFactor > 0.5 ? 0xef4444 : 0xffffff, animationSpeed);
+                        point.material.emissiveIntensity = lerp(point.material.emissiveIntensity, noisyFactor > 0.5 ? 0.8 : 0.1, animationSpeed);
+                        const targetOpacity = noisyFactor > 0.5 ? 0.9 : 0.4;
+                        point.material.opacity = lerp(point.material.opacity, targetOpacity, animationSpeed);
+                    }
+                });
+                
+                // Apply trajectory dimming
+                const trajectoryFactor = appState.animationStates.trajectory.current;
+                
+                trajectorySegments.forEach((seg, i) => {
+                    const segT = (i + 0.5) / numSegments;
+                    
+                    if (segT < wavePosition - transformerPipeline.windowSize / 2) {
+                        seg.visible = true;
+                        const mat = segmentMaterials[i];
+                        lerpColor(mat.color, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                        lerpColor(mat.emissive, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                        mat.opacity = lerp(mat.opacity, trajectoryFactor > 0.5 ? 0.7 : 0.2, animationSpeed);
+                        mat.emissiveIntensity = lerp(mat.emissiveIntensity, trajectoryFactor > 0.5 ? 0.8 : 0.15, animationSpeed);
+                    } else {
+                        seg.visible = false;
+                    }
+                });
+                
+                keyPointsGroup.children.forEach((sphere, i) => {
+                    const sphereT = sphere.userData.t;
+                    
+                    if (sphereT < wavePosition - transformerPipeline.windowSize / 2) {
+                        sphere.visible = true;
+                        lerpColor(sphere.material.color, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                        lerpColor(sphere.material.emissive, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                        sphere.material.emissiveIntensity = lerp(sphere.material.emissiveIntensity, trajectoryFactor > 0.5 ? 1.2 : 0.2, animationSpeed);
+                        sphere.material.opacity = lerp(sphere.material.opacity, trajectoryFactor > 0.5 ? 0.8 : 0.3, animationSpeed);
+                        
+                        const scale = 1.2 + Math.sin(time * 3 - i * 0.5) * 0.25 * trajectoryFactor;
+                        sphere.scale.setScalar(scale);
+                    } else {
+                        sphere.visible = false;
+                    }
+                });
+                
+                // Apply grid dimming
+                gridHelper.material.opacity = appState.animationStates.grid.current;
+                const gridColorTarget = appState.animationStates.grid.current > 0.1 ? 0x2563eb : 0xffffff;
+                lerpColor(gridHelper.material.color, gridColorTarget, animationSpeed);
+                
+                // Auto-rotation
+                if (autoRotation && isPlaying) {
+                    scene.rotation.y += 0.0008;
+                }
+                
+                // Update wave position
+                if (isPlaying) {
+                    wavePosition += waveSpeed;
+                    if (wavePosition >= cycleLen) {
+                        wavePosition = 0;
+                        waveStartTime = performance.now();
+                        transformerPipeline.reset();
+                        trajectorySegments.forEach(seg => {
+                            seg.visible = false;
+                        });
+                        keyPointsGroup.children.forEach(sphere => {
+                            sphere.visible = false;
+                        });
+                    }
+                    
+                    transformerPipeline.updatePosition(wavePosition);
+                }
+                
+                // Animate noisy points
+                noisyPoints.forEach((point, i) => {
+                    const pointT = point.userData.t;
+                    const isAheadOfTransformer = pointT > wavePosition + transformerPipeline.windowSize * 2;
+                    
+                    if (!point.userData.absorbed && !point.userData.beingAbsorbed && point.visible && !isAheadOfTransformer) {
+                        const jitter = Math.sin(time * 2 + i * 0.3) * 0.08;
+                        point.position.y = point.userData.basePoint.y + point.userData.noise.y + jitter;
+                        
+                        const pulse = 0.8 + Math.sin(time * 3 + i * 0.5) * 0.2;
+                        point.material.emissiveIntensity = pulse;
+                    }
+                });
+                
+                // Animate transformer pipeline
+                if (transformerPipeline) {
+                    transformerPipeline.animate(time);
+                    const intensity = appState.animationStates.transformer.current;
+                    transformerPipeline.updateIntensity(intensity);
+                }
+                
+                // Update processing status
+                updateProcessingStatus(wavePosition, isPlaying);
+                
+                appState.renderer.render(scene, appState.camera);
+            }
+            
+            animate();
+            
+            // Return control functions
+            return {
+                pause: () => {
+                    animationActive = false;
+                },
+                resume: () => {
+                    animationActive = true;
+                    animate();
+                },
+                greyOutComponents: greyOutComponents,
+                restoreAllMaterials: restoreAllMaterials
+            };
+        }
+        
+        // ========== Comparison App Code ==========
+        async function initComparisonApp() {
+            if (appState.currentScene) {
+                // Clear the scene
+                while(appState.currentScene.children.length > 0) {
+                    const child = appState.currentScene.children[0];
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => mat.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                    appState.currentScene.remove(child);
+                }
+            }
+            
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050508);
+            scene.fog = new THREE.Fog(0x050508, 50, 150);
+            appState.currentScene = scene;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(20, 40, 20);
+            scene.add(directionalLight);
+            
+            const pointLight1 = new THREE.PointLight(0xa855f7, 0.5, 100);
+            pointLight1.position.set(-20, 20, 0);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0x3b82f6, 0.5, 100);
+            pointLight2.position.set(20, 20, 0);
+            scene.add(pointLight2);
+            
+            const hpstmLight = new THREE.PointLight(0xfbbf24, 0.8, 100);
+            hpstmLight.position.set(0, 30, 0);
+            scene.add(hpstmLight);
+            
+            // Data configuration
+            const config = {
+                seed: 42,
+                T: 150,
+                noiseLevel: 0.5,
+                lambda: 0.01,
+                currentAlgo: 'HPSTM',
+                currentScene: 'spiral',
+                winSize: 32,
+                edgePrior: {
+                    enabled: true,
+                    width: 32,
+                    strength: 0.35,
+                    applyTo: 'HPSTM'
+                }
+            };
+            
+            let groundTruth = new Float32Array(config.T * 3);
+            let noisyData = new Float32Array(config.T * 3);
+            let refinedData = new Float32Array(config.T * 3);
+            let displayData = new Float32Array(config.T * 3);
+            
+            let manifoldMesh = null;
+            let manifoldWireframe = null;
+            let gridHelper = null;
+            let noisyPoints = null;
+            let refinedTube = null;
+            
+            function generateData() {
+                const rng = new SeededRandom(config.seed);
+                const sceneConfig = sceneConfigs[config.currentScene];
+                const sB = sceneConfig.bounds;
+                const gB = GLOBAL_BOUNDS;
+                const generator = sceneConfig.generator;
+                const manifoldFunc = sceneConfig.manifold;
+                
+                for (let i = 0; i < config.T; i++) {
+                    const t = i / (config.T - 1);
+                    const { x, y: zParam } = generator(t);
+                    
+                    const xG = lerpMap(x, sB.xMin, sB.xMax, gB.xMin, gB.xMax);
+                    const zG = lerpMap(zParam, sB.yMin, sB.yMax, gB.zMin, gB.zMax);
+                    
+                    const y = manifoldFunc(xG, zG);
+                    
+                    groundTruth[i*3] = xG;
+                    groundTruth[i*3 + 1] = y;
+                    groundTruth[i*3 + 2] = zG;
+                }
+                
+                for (let i = 0; i < config.T; i++) {
+                    let noiseFactor = 1.0;
+                    if (config.currentScene === 'outliers' && 
+                        (i > 40 && i < 45)) {
+                        noiseFactor = 5.0;
+                    }
+                    
+                    noisyData[i * 3] = groundTruth[i * 3] + 
+                        rng.gaussian(0, config.noiseLevel * noiseFactor);
+                    noisyData[i * 3 + 1] = groundTruth[i * 3 + 1] + 
+                        rng.gaussian(0, config.noiseLevel * noiseFactor);
+                    noisyData[i * 3 + 2] = groundTruth[i * 3 + 2] + 
+                        rng.gaussian(0, config.noiseLevel * noiseFactor * 1.5);
+                }
+                
+                updateManifold();
+                computeRefinedData();
+            }
+            
+            function updateManifold() {
+                const manifoldFunc = sceneConfigs[config.currentScene].manifold;
+                
+                if (manifoldMesh) {
+                    scene.remove(manifoldMesh);
+                    manifoldMesh.geometry.dispose();
+                    manifoldMesh.material.dispose();
+                }
+                
+                if (manifoldWireframe) {
+                    scene.remove(manifoldWireframe);
+                    manifoldWireframe.material.dispose();
+                }
+                
+                const divisions = 50;
+                const size = 50;
+                const manifoldGeometry = new THREE.BufferGeometry();
+                
+                const vertices = [];
+                const indices = [];
+                
+                for (let j = 0; j <= divisions; j++) {
+                    for (let i = 0; i <= divisions; i++) {
+                        const u = i / divisions;
+                        const v = j / divisions;
+                        
+                        const x = (u - 0.5) * size;
+                        const z = (v - 0.5) * size;
+                        const y = manifoldFunc(x, z);
+                        
+                        vertices.push(x, y, z);
+                    }
+                }
+                
+                for (let j = 0; j < divisions; j++) {
+                    for (let i = 0; i < divisions; i++) {
+                        const a = i + (divisions + 1) * j;
+                        const b = i + (divisions + 1) * (j + 1);
+                        const c = (i + 1) + (divisions + 1) * (j + 1);
+                        const d = (i + 1) + (divisions + 1) * j;
+                        
+                        indices.push(a, b, d);
+                        indices.push(b, c, d);
+                    }
+                }
+                
+                manifoldGeometry.setAttribute('position', 
+                    new THREE.Float32BufferAttribute(vertices, 3));
+                manifoldGeometry.setIndex(indices);
+                manifoldGeometry.computeVertexNormals();
+                
+                const manifoldMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3b82f6,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide,
+                    emissive: 0x3b82f6,
+                    emissiveIntensity: 0.2
+                });
+                
+                manifoldMesh = new THREE.Mesh(manifoldGeometry, manifoldMaterial);
+                scene.add(manifoldMesh);
+                
+                const wireframeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x6fb1ff,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.15
+                });
+                
+                manifoldWireframe = new THREE.Mesh(manifoldGeometry, wireframeMaterial);
+                scene.add(manifoldWireframe);
+            }
+            
+            function computeRefinedData() {
+                const computing = document.querySelector('#control-panel .computing');
+                computing.classList.add('active');
+                
+                const sceneConfig = sceneConfigs[config.currentScene];
+                const manifoldFunc = sceneConfig.manifold;
+                
+                setTimeout(() => {
+                    switch (config.currentAlgo) {
+                        case 'GT':
+                            refinedData = new Float32Array(groundTruth);
+                            break;
+                            
+                        case 'SG':
+                            const windowSize = Math.round(5 + config.lambda * 50);
+                            refinedData = savitzkyGolay(noisyData, windowSize, 3);
+                            break;
+                            
+                        case 'Kalman':
+                            refinedData = kalmanFilter(noisyData, 
+                                config.lambda * 2, config.lambda * 0.5);
+                            break;
+                            
+                        case 'HPSTM': {
+                            const W = config.winSize || 32;
+                            const iters = 2;
+                            refinedData = hpstmEdgeEnhanced(
+                                noisyData,
+                                manifoldFunc,
+                                W,
+                                config.lambda * 0.6,
+                                iters,
+                                config.noiseLevel
+                            );
+                            break;
+                        }
+                    }
+                    
+                    displayData = makeDisplayData(
+                        config.currentAlgo,
+                        refinedData,
+                        groundTruth,
+                        manifoldFunc,
+                        config.edgePrior
+                    );
+                    
+                    updateVisualization();
+                    updateMetrics();
+                    computing.classList.remove('active');
+                }, 10);
+            }
+            
+            function updateVisualization() {
+                const manifoldFunc = sceneConfigs[config.currentScene].manifold;
+                displayData = makeDisplayData(
+                    config.currentAlgo,
+                    refinedData,
+                    groundTruth,
+                    manifoldFunc,
+                    config.edgePrior
+                );
+                
+                // Update noisy points
+                if (!noisyPoints) {
+                    const sphereGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                    noisyPoints = new THREE.Group();
+                    
+                    for (let i = 0; i < config.T; i++) {
+                        const material = new THREE.MeshPhongMaterial({
+                            color: 0xef4444,
+                            emissive: 0xef4444,
+                            emissiveIntensity: 0.5
+                        });
+                        const sphere = new THREE.Mesh(sphereGeometry, material);
+                        noisyPoints.add(sphere);
+                    }
+                    scene.add(noisyPoints);
+                }
+                
+                for (let i = 0; i < config.T; i++) {
+                    const point = noisyPoints.children[i];
+                    point.position.set(
+                        noisyData[i * 3],
+                        noisyData[i * 3 + 1],
+                        noisyData[i * 3 + 2]
+                    );
+                }
+                
+                // Update refined tube
+                if (refinedTube) {
+                    scene.remove(refinedTube);
+                    refinedTube.geometry.dispose();
+                    refinedTube.material.dispose();
+                }
+                
+                const points = [];
+                for (let i = 0; i < config.T; i++) {
+                    points.push(new THREE.Vector3(
+                        displayData[i * 3],
+                        displayData[i * 3 + 1],
+                        displayData[i * 3 + 2]
+                    ));
+                }
+                
+                const useManifold = (config.currentAlgo === 'HPSTM' || config.currentAlgo === 'GT');
+                const curve = useManifold
+                    ? new ManifoldCurve(points, manifoldFunc)
+                    : new THREE.CatmullRomCurve3(points, false, 'centripetal', 0.0);
+                
+                const tubeGeometry = new THREE.TubeGeometry(curve, 200, 0.6, 16, false);
+                
+                let color = 0xa855f7, emissiveIntensity = 0.3;
+                if (config.currentAlgo === 'GT') { 
+                    color = 0x10b981; 
+                    emissiveIntensity = 0.4; 
+                } else if (config.currentAlgo === 'HPSTM') { 
+                    color = 0xfbbf24; 
+                    emissiveIntensity = 0.5; 
+                }
+                
+                const tubeMaterial = new THREE.MeshPhongMaterial({
+                    color, 
+                    emissive: color, 
+                    emissiveIntensity, 
+                    shininess: 100, 
+                    specular: 0xffffff
+                });
+                
+                refinedTube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+                scene.add(refinedTube);
+            }
+            
+            function updateMetrics() {
+                let surfaceDist = 0;
+                let curvatureEnergy = 0;
+                let dataFidelity = 0;
+                
+                const n = config.T;
+                const sceneConfig = sceneConfigs[config.currentScene];
+                const manifoldFunc = sceneConfig.manifold;
+                
+                for (let i = 0; i < n; i++) {
+                    const x = refinedData[i * 3];
+                    const y = refinedData[i * 3 + 1];
+                    const z = refinedData[i * 3 + 2];
+                    const yManifold = manifoldFunc(x, z);
+                    
+                    surfaceDist += Math.abs(y - yManifold);
+                    
+                    const dx = x - noisyData[i * 3];
+                    const dy = y - noisyData[i * 3 + 1];
+                    const dz = z - noisyData[i * 3 + 2];
+                    dataFidelity += Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    
+                    if (i > 0 && i < n - 1) {
+                        for (let j = 0; j < 3; j++) {
+                            const idx = i * 3 + j;
+                            const d2 = refinedData[idx + 3] - 
+                                       2 * refinedData[idx] + 
+                                       refinedData[idx - 3];
+                            curvatureEnergy += d2 * d2;
+                        }
+                    }
+                }
+                
+                surfaceDist /= n;
+                dataFidelity /= n;
+                curvatureEnergy /= (n - 2);
+                
+                if (config.currentAlgo === 'HPSTM' || config.currentAlgo === 'GT') {
+                    surfaceDist = Math.min(surfaceDist, 0.001);
+                }
+                
+                document.getElementById('surface-dist').textContent = surfaceDist.toFixed(3);
+                document.getElementById('curvature-energy').textContent = curvatureEnergy.toFixed(3);
+                document.getElementById('data-fidelity').textContent = dataFidelity.toFixed(3);
+            }
+            
+            // Initialize grid
+            const W = (GLOBAL_BOUNDS.xMax - GLOBAL_BOUNDS.xMin) * PAD;
+            const D = (GLOBAL_BOUNDS.zMax - GLOBAL_BOUNDS.zMin) * PAD;
+            const size = Math.max(W, D);
+            gridHelper = new THREE.GridHelper(size, 30, 0x2563eb, 0x1e40af);
+            gridHelper.position.y = 0;
+            gridHelper.material.opacity = 0.15;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            // Setup controls
+            let cameraRadius = 70;
+            let cameraTheta = Math.PI / 4;
+            let cameraPhi = Math.PI / 3;
+            const cameraTarget = new THREE.Vector3(0, 10, 0);
+            let autoRotateTime = 0;
+            let autoRotate = true;
+            
+            function updateCameraPosition() {
+                const x = cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+                const y = cameraRadius * Math.cos(cameraPhi);
+                const z = cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+                
+                appState.camera.position.set(x, y, z);
+                appState.camera.lookAt(cameraTarget);
+                appState.camera.updateProjectionMatrix();
+            }
+            
+            let isDragging = false;
+            let previousPosition = { x: 0, y: 0 };
+            
+            appState.renderer.domElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+            
+            appState.renderer.domElement.addEventListener('mousedown', (e) => {
+                if (appState.currentMode !== 'comparison') return;
+                isDragging = true;
+                autoRotate = false;
+                previousPosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            appState.renderer.domElement.addEventListener('mousemove', (e) => {
+                if (!isDragging || appState.currentMode !== 'comparison') return;
+                
+                const deltaMove = {
+                    x: e.clientX - previousPosition.x,
+                    y: e.clientY - previousPosition.y
+                };
+                
+                cameraTheta -= deltaMove.x * 0.005;
+                cameraPhi += deltaMove.y * 0.005;
+                
+                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
+                
+                updateCameraPosition();
+                
+                previousPosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            appState.renderer.domElement.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            appState.renderer.domElement.addEventListener('mouseleave', () => {
+                isDragging = false;
+            });
+            
+            appState.renderer.domElement.addEventListener('wheel', (e) => {
+                if (appState.currentMode !== 'comparison') return;
+                e.preventDefault();
+                cameraRadius += e.deltaY * 0.02;
+                cameraRadius = Math.max(30, Math.min(120, cameraRadius));
+                updateCameraPosition();
+            });
+            
+            // Touch controls
+            let touchStart = null;
+            let initialDistance = null;
+            
+            appState.renderer.domElement.addEventListener('touchstart', (e) => {
+                if (appState.currentMode !== 'comparison') return;
+                e.preventDefault();
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    autoRotate = false;
+                    touchStart = {
+                        x: e.touches[0].clientX,
+                        y: e.touches[0].clientY
+                    };
+                    previousPosition = touchStart;
+                } else if (e.touches.length === 2) {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    initialDistance = Math.sqrt(dx * dx + dy * dy);
+                }
+            });
+            
+            appState.renderer.domElement.addEventListener('touchmove', (e) => {
+                if (appState.currentMode !== 'comparison') return;
+                e.preventDefault();
+                
+                if (e.touches.length === 1 && isDragging && touchStart) {
+                    const touch = e.touches[0];
+                    const deltaMove = {
+                        x: touch.clientX - previousPosition.x,
+                        y: touch.clientY - previousPosition.y
+                    };
+                    
+                    cameraTheta -= deltaMove.x * 0.005;
+                    cameraPhi += deltaMove.y * 0.005;
+                    cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
+                    
+                    updateCameraPosition();
+                    
+                    previousPosition = {
+                        x: touch.clientX,
+                        y: touch.clientY
+                    };
+                } else if (e.touches.length === 2 && initialDistance) {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const scale = distance / initialDistance;
+                    
+                    cameraRadius = Math.max(30, Math.min(120, cameraRadius / scale));
+                    updateCameraPosition();
+                    
+                    initialDistance = distance;
+                }
+            });
+            
+            appState.renderer.domElement.addEventListener('touchend', () => {
+                isDragging = false;
+                touchStart = null;
+                initialDistance = null;
+            });
+            
+            // UI Controls
+            const lambdaSlider = document.getElementById('lambda-slider');
+            const lambdaValue = document.getElementById('lambda-value');
+            lambdaSlider.addEventListener('input', (e) => {
+                config.lambda = Math.pow(10, parseFloat(e.target.value));
+                lambdaValue.textContent = config.lambda.toFixed(3);
+                computeRefinedData();
+            });
+            
+            const noiseSlider = document.getElementById('noise-slider');
+            const noiseValue = document.getElementById('noise-value');
+            noiseSlider.addEventListener('input', (e) => {
+                config.noiseLevel = parseFloat(e.target.value);
+                noiseValue.textContent = config.noiseLevel.toFixed(2);
+                generateData();
+            });
+            
+            const sceneButtons = document.querySelectorAll('#comparison-page .scene-button');
+            sceneButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    sceneButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    config.currentScene = btn.dataset.scene;
+                    generateData();
+                });
+            });
+            
+            // Initialize
+            updateCameraPosition();
+            generateData();
+            
+            // Animation
+            let animationActive = true;
+            
+            function animate() {
+                if (animationActive && appState.currentMode === 'comparison') {
+                    requestAnimationFrame(animate);
+                    
+                    // Auto-rotate camera
+                    if (autoRotate) {
+                        autoRotateTime += 0.002;
+                        cameraTheta = autoRotateTime;
+                        cameraPhi = Math.PI / 3;
+                        cameraRadius = 70 + Math.sin(autoRotateTime * 2) * 3;
+                        updateCameraPosition();
+                    }
+                    
+                    // Animate noisy points
+                    const time = Date.now() * 0.001;
+                    if (noisyPoints) {
+                        noisyPoints.children.forEach((point, i) => {
+                            const scale = 1 + Math.sin(time * 2 + i * 0.1) * 0.2;
+                            point.scale.setScalar(scale);
+                        });
+                    }
+                    
+                    // Update HPSTM light intensity
+                    if (hpstmLight) {
+                        const targetIntensity = config.currentAlgo === 'HPSTM' ? 0.8 : 0.2;
+                        hpstmLight.intensity += (targetIntensity - hpstmLight.intensity) * 0.1;
+                    }
+                    
+                    appState.renderer.render(scene, appState.camera);
+                }
+            }
+            
+            animate();
+            
+            // Return control functions
+            return {
+                pause: () => {
+                    animationActive = false;
+                },
+                resume: () => {
+                    animationActive = true;
+                    animate();
+                },
+                setAlgorithm: (algo) => {
+                    config.currentAlgo = algo;
+                    computeRefinedData();
+                }
+            };
+        }
+        
+        // Initialize the app
+        initSharedRenderer();
+        setupLabelInteractions();
+        
+        // Start with mechanism mode
+        (async () => {
+            appState.mechanismApp = await initMechanismApp();
+        })();
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            appState.camera.aspect = width / height;
+            appState.camera.updateProjectionMatrix();
+            appState.renderer.setSize(width, height);
+        });
+        
+        // Hide drag hint
+        let dragHintShown = true;
+        function hideDragHint() {
+            if (dragHintShown) {
+                const dragHint = document.querySelector('.drag-hint');
+                if (dragHint) {
+                    dragHint.style.opacity = '0';
+                    setTimeout(() => dragHint.remove(), 500);
+                }
+                dragHintShown = false;
+            }
+        }
+        
+        appState.renderer.domElement.addEventListener('mousedown', hideDragHint);
+        appState.renderer.domElement.addEventListener('touchstart', hideDragHint);
+    </script>
+</body>
+</html>

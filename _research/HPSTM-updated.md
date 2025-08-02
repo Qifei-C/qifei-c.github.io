@@ -4,6 +4,7 @@ collection: research
 category: recent
 status: unpublished
 permalink: /research/HPSTM-updated
+redirect_to: "/files/unified-hpstm-viz.html"
 excerpt: 'A novel Transformer-based approach for smoothing 3D human pose trajectories in real-time teleoperation, addressing jitter and instability issues in markerless motion capture while maintaining temporal consistency for precise robotic control.'
 date: 2025-03-15
 github_repo: https://github.com/Qifei-C/HPSTM
@@ -31,9 +32,9 @@ Markerless human pose estimation enables flexible robotic teleoperation without 
 ## Citation
 
 ```bibtex
-@article{chen2025hpstm,
+@article{cui2025hpstm,
   title={Human Pose Smoothing via Transformer Module for Robot Teleoperation},
-  author={Chen, Qifei and others},
+  author={C, Qifei},
   journal={arXiv preprint arXiv:2506.17282},
   year={2025}
 }
