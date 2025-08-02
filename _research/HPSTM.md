@@ -4,7 +4,7 @@ collection: research
 category: recent
 status: recent
 permalink: /research/HPSTM
-redirect_to: "https://github.com/Qifei-C/HPSTM/"
+redirect_to: "/hpstm-visualization-latest.html"
 excerpt: 'A PyTorch implementation for 3D human pose smoothing using a Transformer-based temporal encoder and manifold constraints (HPSTM) to ensure physically plausible poses. Inspired by SmoothNet and ManiPose.'
 date: 2025-05-15
 ---

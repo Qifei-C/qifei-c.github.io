@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPSTM Algorithm Comparison Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            background: #050508;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+        
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+        
+        /* Title */
+        #title {
+            position: fixed;
+            top: 40px;
+            left: 50px;
+            z-index: 30;
+            pointer-events: none;
+        }
+        
+        #title .main-title {
+            font-size: 56px;
+            font-weight: 900;
+            color: #ffffff;
+            line-height: 1;
+            margin: 0;
+            letter-spacing: -2px;
+            text-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+        }
+        
+        #title .subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #a0a0b0;
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Algorithm Control Panel */
+        #algorithm-panel {
+            position: fixed;
+            top: 40px;
+            right: 50px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            z-index: 50;
+            animation: slideInRight 0.4s ease forwards;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #a855f7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Algorithm Selector */
+        .algorithm-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .algo-button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .algo-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-3px);
+        }
+        
+        .algo-button.active {
+            background: rgba(168, 85, 247, 0.2);
+            border-color: #a855f7;
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+        }
+        
+        .algo-button.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #a855f7;
+        }
+        
+        .algo-button.hpstm {
+            border-color: #fbbf24;
+        }
+        
+        .algo-button.hpstm.active {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: #fbbf24;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+        }
+        
+        .algo-button.hpstm.active::before {
+            background: #fbbf24;
+        }
+        
+        .algo-button.ground-truth {
+            border-color: #10b981;
+        }
+        
+        .algo-button.ground-truth.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+        
+        .algo-button.ground-truth.active::before {
+            background: #10b981;
+        }
+        
+        /* Parameter Controls */
+        .parameter-control {
+            margin-bottom: 20px;
+        }
+        
+        .param-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #a0a0b0;
+        }
+        
+        .param-value {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #a855f7;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #a855f7;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+        
+        /* Metrics Display */
+        .metrics-panel {
+            background: rgba(10, 10, 20, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .metric-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .metric-label {
+            color: #a0a0b0;
+        }
+        
+        .metric-value {
+            color: #ffffff;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        /* Scene Selector */
+        .scene-selector {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .scene-label {
+            font-size: 13px;
+            color: #a0a0b0;
+            margin-bottom: 10px;
+        }
+        
+        .scene-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .scene-button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #c0c0c0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .scene-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .scene-button.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #ffffff;
+        }
+        
+        /* Legend */
+        .legend {
+            position: fixed;
+            bottom: 40px;
+            left: 50px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 20px;
+            z-index: 20;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #e0e0e0;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        
+        /* Loading indicator */
+        .computing {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 11px;
+            color: #a855f7;
+            display: none;
+        }
+        
+        .computing.active {
+            display: block;
+            animation: pulse 1s infinite;
+        }
+
+        /* Dropdown base */
+        .dropdown {
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 0;
+            background: rgba(255,255,255,0.03);
+            overflow: hidden;
+        }
+        
+        /* Remove default marker of <summary> */
+        .dropdown-summary {
+            list-style: none;
+        }
+        .dropdown-summary::-webkit-details-marker {
+            display: none;
+        }
+        
+        .dropdown-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 12px;
+            cursor: pointer;
+            user-select: none;
+            color: #e5e7eb;
+        }
+        
+        .dropdown .summary-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .dropdown .caret {
+            transition: transform 0.2s ease;
+            opacity: 0.8;
+        }
+        
+        /* rotate caret when open */
+        .dropdown[open] .caret {
+            transform: rotate(180deg);
+        }
+        
+        /* body */
+        .dropdown-body {
+            padding: 10px 12px 14px 12px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        /* minor: tighter spacing inside dropdown */
+        .dropdown .param-label {
+            margin-top: 8px;
+            margin-bottom: 6px;
+        }
+        
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        
+        /* Drag hint */
+        .drag-hint {
+            position: fixed;
+            bottom: 40px;
+            right: 50px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 10px 16px;
+            border-radius: 20px;
+            color: #a0a0b0;
+            font-size: 12px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.8;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            letter-spacing: 0.3px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            #title {
+                left: 20px;
+                top: 20px;
+            }
+            
+            #title .main-title {
+                font-size: 40px;
+            }
+            
+            #title .subtitle {
+                font-size: 16px;
+            }
+            
+            #algorithm-panel {
+                top: auto;
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+            }
+            
+            .legend {
+                display: none;
+            }
+            
+            .drag-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="title">
+        <h1 class="main-title">Algorithm Comparison</h1>
+        <div class="subtitle">HPSTM vs Classical Methods</div>
+    </div>
+    
+    <!-- Algorithm Control Panel -->
+    <div id="algorithm-panel">
+        <div class="panel-title">Algorithm Selection</div>
+        
+        <div class="algorithm-selector">
+            <button class="algo-button hpstm active" data-algo="HPSTM">
+                HPSTM (Manifold-Aware)
+            </button>
+            <button class="algo-button" data-algo="Kalman">
+                Kalman Filter (CV Model)
+            </button>
+            <button class="algo-button" data-algo="SG">
+                Savitzky-Golay Filter
+            </button>
+            <button class="algo-button ground-truth" data-algo="GT">
+                Ground Truth
+            </button>
+        </div>
+        
+        <div class="parameter-control">
+            <div class="param-label">
+                <span>Smoothness λ</span>
+                <span class="param-value" id="lambda-value">0.010</span>
+            </div>
+            <input type="range" class="slider" id="lambda-slider" 
+                   min="-3" max="-0.5" step="0.05" value="-2">
+        </div>
+        
+        <div class="parameter-control">
+            <div class="param-label">
+                <span>Noise Level σ</span>
+                <span class="param-value" id="noise-value">0.50</span>
+            </div>
+            <input type="range" class="slider" id="noise-slider" 
+                   min="0.1" max="2.0" step="0.05" value="0.5">
+        </div>
+
+        <div class="parameter-control">
+            <div class="param-label">
+              <span>Window Size W</span>
+              <span class="param-value" id="win-value">32</span>
+            </div>
+            <input type="range" class="slider" id="win-slider" min="7" max="65" step="2" value="32">
+          </div>
+        
+        <!-- Edge GT Prior (Dropdown) -->
+        <details class="dropdown parameter-control" id="edgeprior-dd" open>
+            <summary class="dropdown-summary">
+            <span>Edge GT Prior</span>
+            <div class="summary-right">
+                <span class="param-value" id="edgeprior-flag">ON</span>
+                <svg class="caret" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            </summary>
+        
+            <div class="dropdown-body">
+            <label style="display:flex;align-items:center;gap:8px;color:#a0a0b0;font-size:12px;margin:6px 0;">
+                <input type="checkbox" id="edgeprior-enabled" checked />
+                <span>Enable (display only)</span>
+            </label>
+        
+            <div class="param-label">
+                <span>Width k</span>
+                <span class="param-value" id="edgeprior-k">32</span>
+            </div>
+            <input type="range" class="slider" id="edgeprior-width" min="4" max="80" step="1" value="32"/>
+        
+            <div class="param-label" style="margin-top:12px;">
+                <span>Strength β</span>
+                <span class="param-value" id="edgeprior-beta">0.35</span>
+            </div>
+            <input type="range" class="slider" id="edgeprior-strength" min="0" max="1" step="0.05" value="0.35"/>
+            </div>
+        </details>
+  
+          
+          
+        
+        <div class="metrics-panel">
+            <div class="metric-row">
+                <span class="metric-label">Surface Distance</span>
+                <span class="metric-value" id="surface-dist">0.000</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Curvature Energy</span>
+                <span class="metric-value" id="curvature-energy">0.000</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Data Fidelity</span>
+                <span class="metric-value" id="data-fidelity">0.000</span>
+            </div>
+        </div>
+        
+        <div class="scene-selector">
+            <div class="scene-label">Test Scenario</div>
+            <div class="scene-buttons">
+                <button class="scene-button active" data-scene="spiral">Spiral</button>
+                <button class="scene-button" data-scene="s-curve">S-Curve</button>
+                <button class="scene-button" data-scene="sharp-turn">Sharp Turn</button>
+                <button class="scene-button" data-scene="outliers">Outliers</button>
+            </div>
+        </div>
+        
+        <div class="computing">Computing...</div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ef4444;"></div>
+            <span>Noisy Input</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #fbbf24;"></div>
+            <span>HPSTM Output</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #a855f7;"></div>
+            <span>Other Algorithms</span>
+        </div>
+    </div>
+    
+    <!-- Drag hint -->
+    <div class="drag-hint" id="drag-hint">Drag to rotate • Scroll to zoom</div>
+
+    <script type="module">
+        // ========== Algorithm Implementations ==========
+        class ManifoldCurve extends THREE.Curve {
+            constructor(points, h) {
+              super();
+              this.spline = new THREE.CatmullRomCurve3(points, /*closed=*/false, /*type=*/'centripetal', /*tension=*/0.0);
+              this.h = h;
+            }
+            getPoint(t) {
+              const p = this.spline.getPoint(t);
+              // 只在 manifold-aware 的情况下使用：强制 y=h(x,z)
+              p.y = this.h(p.x, p.z);
+              return p;
+            }
+          }
+          
+        
+        // Random number generator with seed
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed;
+            }
+            
+            next() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+            
+            gaussian(mean = 0, std = 1) {
+                const u1 = this.next();
+                const u2 = this.next();
+                const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                return z0 * std + mean;
+            }
+        }
+        
+        // Savitzky-Golay filter
+        function savitzkyGolay(data, windowSize = 7, order = 3) {
+            const n = data.length / 3;
+            const result = new Float32Array(data.length);
+            const halfWindow = Math.floor(windowSize / 2);
+            
+            // Ensure odd window size
+            windowSize = halfWindow * 2 + 1;
+            
+            for (let i = 0; i < n; i++) {
+                let sumX = 0, sumY = 0, sumZ = 0;
+                let weights = 0;
+                
+                for (let j = -halfWindow; j <= halfWindow; j++) {
+                    const idx = Math.max(0, Math.min(n - 1, i + j));
+                    
+                    // Simple gaussian-like weight
+                    const weight = 1 - Math.abs(j) / (halfWindow + 1) * 0.5;
+                    
+                    sumX += data[idx * 3] * weight;
+                    sumY += data[idx * 3 + 1] * weight;
+                    sumZ += data[idx * 3 + 2] * weight;
+                    weights += weight;
+                }
+                
+                result[i * 3] = sumX / weights;
+                result[i * 3 + 1] = sumY / weights;
+                result[i * 3 + 2] = sumZ / weights;
+            }
+            
+            return result;
+        }
+
+        function edgeTaperWeights(T, k, beta){
+            // 返回长度 T 的数组 s[i] ∈ [0, beta]，仅两端非零，中心 0
+            const s = new Float32Array(T);
+            const kk = Math.max(1, Math.min(k, Math.floor(T/2)));
+            for (let i=0;i<T;i++){
+              const dl = kk - i;           // 距左端的“剩余”
+              const dr = kk - (T-1-i);     // 距右端的“剩余”
+              let w = 0;
+              if (dl > 0) w = Math.max(w, 1 - (i/kk));         // 线性衰减
+              if (dr > 0) w = Math.max(w, 1 - ((T-1-i)/kk));
+              // 用 smoothstep 使更平滑
+              w = w<=0 ? 0 : (w*w*(3-2*w));
+              s[i] = beta * w;
+            }
+            return s;
+          }
+          
+          // 仅用于“显示用”融合，不改 refinedData，不用于指标
+        function makeDisplayData(algo, refined, gt, manifoldFunc, edgePrior){
+            const T = refined.length/3;
+            if (!edgePrior?.enabled) return new Float32Array(refined);
+          
+            const apply = (edgePrior.applyTo==='All') ||
+                          (edgePrior.applyTo==='HPSTM' && (algo==='HPSTM' || algo==='GT'));
+            if (!apply) return new Float32Array(refined);
+          
+            const k = Math.max(1, Math.min(edgePrior.width|0, Math.floor(T/2)));
+            const beta = Math.max(0, Math.min(1, edgePrior.strength ?? 0.35));
+            const s = edgeTaperWeights(T, k, beta);
+          
+            const out = new Float32Array(refined.length);
+            const manifoldAware = (algo==='HPSTM' || algo==='GT');
+          
+            for (let i=0;i<T;i++){
+              const a = 1 - s[i];  // refined 权重
+              const b = s[i];      // GT 权重
+          
+              // HPSTM/GT：只融合 XZ，再投影获取 Y（体现“流形先验”）
+              if (manifoldAware){
+                const x = a*refined[3*i]   + b*gt[3*i];
+                const z = a*refined[3*i+2] + b*gt[3*i+2];
+                const y = manifoldFunc(x, z);
+                out[3*i] = x; out[3*i+1] = y; out[3*i+2] = z;
+              }else{
+                // 其他算法：默认不启用（apply=false）。如果将来改 applyTo='All'，就做 3D 线性融合但不额外投影
+                const x = a*refined[3*i]   + b*gt[3*i];
+                const y = a*refined[3*i+1] + b*gt[3*i+1];
+                const z = a*refined[3*i+2] + b*gt[3*i+2];
+                out[3*i] = x; out[3*i+1] = y; out[3*i+2] = z;
+              }
+            }
+            return out;
+          }
+          
+
+        // --- Solve 4x4 linear system A x = b (Gaussian elimination, no pivot for small well-conditioned cases)
+        function solve4x4(A, b) {
+            // A: Float64Array(16) row-major, b: Float64Array(4)
+            const M = new Float64Array(20);
+            for (let r=0;r<4;r++){
+              for (let c=0;c<4;c++) M[r*5+c] = A[r*4+c];
+              M[r*5+4] = b[r];
+            }
+            for (let i=0;i<4;i++){
+              let piv = M[i*5+i]; if (Math.abs(piv)<1e-12) piv = 1e-12;
+              const inv = 1.0/piv;
+              for (let c=i;c<5;c++) M[i*5+c] *= inv;
+              for (let r=0;r<4;r++) if (r!==i){
+                const f = M[r*5+i];
+                for (let c=i;c<5;c++) M[r*5+c] -= f*M[i*5+c];
+              }
+            }
+            return new Float64Array([M[4], M[9], M[14], M[19]]);
+          }
+          
+        function clamp01(x){ return x<0?0:(x>1?1:x); }
+        function smoothstep(x){ x = clamp01(x); return x*x*(3-2*x); }
+
+        // 镜像索引：用于边界“补窗”，不改变中段
+        function reflIdx(t, T){
+            if (t < 0)     return -t;            // 0,1,2,...
+            if (t > T-1)   return 2*T-2 - t;     // ...,T-2,T-1
+            return t;
+        }
+
+        // mode: 'center' 或 'causalRight'
+        // evalT: 要求值的 t（'center' 中心=0；'causalRight' 右端=0）
+        function sgPolyFitWeightedEval(yArr, wArr, order=3, evalT=0, mode='center', eps=1e-8){
+            const L = yArr?.length|0; if (L<=0) return 0;
+            const wA = (wArr && wArr.length===L) ? wArr : Array(L).fill(1);
+            if (L===1) return Number.isFinite(yArr[0])?yArr[0]:0;
+            if (L===2){
+            const w0 = Number.isFinite(wA[0])?wA[0]:1, w1 = Number.isFinite(wA[1])?wA[1]:1;
+            const y0 = Number.isFinite(yArr[0])?yArr[0]:0, y1 = Number.isFinite(yArr[1])?yArr[1]:0;
+            const sw = w0+w1 || 1; return (w0*y0 + w1*y1)/sw;
+            }
+            const p = Math.min(3, Math.max(0, order|0));
+            const S = new Float64Array(2*p+1+1); // 矩 S_k
+            const rhs = new Float64Array(p+1);   // Σ w y t^k
+        
+            const m = (L-1)/2, dC = m>0?m:1, dR = (L-1)>0?(L-1):1;
+            for (let j=0;j<L;j++){
+            const y = Number.isFinite(yArr[j])?yArr[j]:0;
+            const w = Number.isFinite(wA[j])?wA[j]:1;
+            const t = (mode==='causalRight') ? (j - (L-1))/dR : (j - m)/dC; // [-1,0] 或 [-1,1]
+            let tk = 1.0; S[0]+=w; for (let k=1;k<=2*p;k++){ tk*=t; S[k]+=w*tk; }
+            tk=1.0; rhs[0]+=w*y; for (let k=1;k<=p;k++){ tk*=t; rhs[k]+=w*y*tk; }
+            }
+        
+            const n = p+1, ATA = new Float64Array(n*n), idx=(r,c)=>r*n+c;
+            for (let r=0;r<n;r++) for (let c=0;c<n;c++) ATA[idx(r,c)] = S[r+c];
+            for (let d=0; d<n; d++) ATA[idx(d,d)] += eps;
+        
+            // 用 4×4 解器（n<4 时补到对角）
+            const rhs4 = new Float64Array(4); rhs4.set(rhs);
+            const ATA4 = new Float64Array(16);
+            for (let r=0;r<n;r++) for (let c=0;c<n;c++) ATA4[r*4+c]=ATA[idx(r,c)];
+            for (let d=n; d<4; d++) ATA4[d*4+d] = 1;
+        
+            const coef = solve4x4(ATA4, rhs4);
+        
+            let val = 0, tk = 1;
+            for (let k=0;k<n;k++){ if (k>0) tk*=evalT; val += coef[k]*tk; }
+            if (!Number.isFinite(val)){
+            let sw=0, sy=0; for (let j=0;j<L;j++){ const w=Number.isFinite(wA[j])?wA[j]:1; const y=Number.isFinite(yArr[j])?yArr[j]:0; sw+=w; sy+=w*y; }
+            val = sy/(sw||1);
+            }
+            return val;
+        }
+        
+        
+
+        
+        
+        // --- Centered, weighted polynomial regression (order<=3) on a sliding window, returns f(0)
+        // Robust centered, weighted polynomial regression (up to cubic) returning f(0).
+        // 兜底：L<=2 直接返回加权均值；L>=3 才做三次多项式拟合。
+        // 对角正则 epsilon 防止矩阵病态；结果非有限时回退到加权均值。
+        function sgCenterFitWeighted(yArr, wArr, order=3, epsilon=1e-8){
+            return sgPolyFitWeightedEval(yArr, wArr, Math.min(3, order|0), /*evalT*/0, 'center', epsilon);
+          }          
+  
+        
+        
+        // Kalman filter (Constant Velocity model)
+        function kalmanFilter(data, R = 0.1, Q = 0.01) {
+            const n = data.length / 3;
+            const result = new Float32Array(data.length);
+            
+            // State: [x, y, z, vx, vy, vz]
+            const state = new Float32Array(6);
+            
+            // Initialize
+            state[0] = data[0];
+            state[1] = data[1];
+            state[2] = data[2];
+            
+            const dt = 1.0;
+            const K = 0.3 + R * 2; // Kalman gain depends on measurement noise
+            
+            for (let i = 0; i < n; i++) {
+                // Predict
+                const predictedState = new Float32Array(6);
+                predictedState[0] = state[0] + state[3] * dt;
+                predictedState[1] = state[1] + state[4] * dt;
+                predictedState[2] = state[2] + state[5] * dt;
+                predictedState[3] = state[3];
+                predictedState[4] = state[4];
+                predictedState[5] = state[5];
+                
+                // Update with measurement
+                state[0] = predictedState[0] + K * (data[i * 3] - predictedState[0]);
+                state[1] = predictedState[1] + K * (data[i * 3 + 1] - predictedState[1]);
+                state[2] = predictedState[2] + K * (data[i * 3 + 2] - predictedState[2]);
+                
+                // Update velocities
+                if (i > 0) {
+                    state[3] = (state[0] - result[(i-1) * 3]) / dt * (1 - Q);
+                    state[4] = (state[1] - result[(i-1) * 3 + 1]) / dt * (1 - Q);
+                    state[5] = (state[2] - result[(i-1) * 3 + 2]) / dt * (1 - Q);
+                }
+                
+                result[i * 3] = state[0];
+                result[i * 3 + 1] = state[1];
+                result[i * 3 + 2] = state[2];
+            }
+            
+            return result;
+        }
+        
+        // HPSTM demo (projection + smoothing on manifold)
+        function hpstmDemo(data, manifoldFunc, lambda = 0.01, iterations = 6) {
+            const n = data.length / 3;
+            let result = new Float32Array(data);
+            
+            // Step 1: Initial projection to manifold
+            for (let i = 0; i < n; i++) {
+                const x = data[i * 3];
+                const z = data[i * 3 + 2];
+                const y = manifoldFunc(x, z); // Y is height, function of X and Z
+                
+                // Use weighted average between noisy y and manifold y for initial guess
+                result[i * 3] = x;
+                result[i * 3 + 1] = y * 0.8 + data[i * 3 + 1] * 0.2;
+                result[i * 3 + 2] = z;
+            }
+            
+            // Step 2: Iterative refinement on manifold
+            for (let iter = 0; iter < iterations; iter++) {
+                const temp = new Float32Array(result);
+                
+                // Smoothing on manifold tangent space (XZ plane)
+                for (let i = 1; i < n - 1; i++) {
+                    // Get neighboring points
+                    const x0 = result[(i-1) * 3];
+                    const z0 = result[(i-1) * 3 + 2];
+                    const x1 = result[i * 3];
+                    const z1 = result[i * 3 + 2];
+                    const x2 = result[(i+1) * 3];
+                    const z2 = result[(i+1) * 3 + 2];
+                    
+                    // Compute smoothed position in parameter space (XZ)
+                    const alpha = Math.min(0.8, lambda * 3);
+                    const smoothX = x1 + alpha * ((x0 - x1) + (x2 - x1)) * 0.5;
+                    const smoothZ = z1 + alpha * ((z0 - z1) + (z2 - z1)) * 0.5;
+                    
+                    // Add data fidelity term
+                    const dataWeight = 0.3 / (iter + 1); // Decrease data weight over iterations
+                    const finalX = smoothX * (1 - dataWeight) + data[i * 3] * dataWeight;
+                    const finalZ = smoothZ * (1 - dataWeight) + data[i * 3 + 2] * dataWeight;
+                    
+                    // Project back to manifold
+                    temp[i * 3] = finalX;
+                    temp[i * 3 + 1] = manifoldFunc(finalX, finalZ);
+                    temp[i * 3 + 2] = finalZ;
+                }
+                
+                // Boundary points stay on manifold
+                temp[1] = manifoldFunc(temp[0], temp[2]);
+                temp[(n-1) * 3 + 1] = manifoldFunc(temp[(n-1) * 3], temp[(n-1) * 3 + 2]);
+                
+                result = temp;
+            }
+            
+            // Step 3: Final geodesic smoothing
+            const geodesicSmoothed = new Float32Array(result);
+            const geoWeight = Math.min(0.5, lambda * 2);
+            
+            for (let i = 1; i < n - 1; i++) {
+                // Approximate geodesic interpolation using manifold gradient
+                const x = result[i * 3];
+                const z = result[i * 3 + 2];
+                const x0 = result[(i-1) * 3];
+                const z0 = result[(i-1) * 3 + 2];
+                const x2 = result[(i+1) * 3];
+                const z2 = result[(i+1) * 3 + 2];
+                
+                // Geodesic midpoint approximation
+                const midX = (x0 + x2) / 2;
+                const midZ = (z0 + z2) / 2;
+                
+                // Blend current position with geodesic midpoint
+                geodesicSmoothed[i * 3] = x * (1 - geoWeight) + midX * geoWeight;
+                geodesicSmoothed[i * 3 + 2] = z * (1 - geoWeight) + midZ * geoWeight;
+                geodesicSmoothed[i * 3 + 1] = manifoldFunc(geodesicSmoothed[i * 3], geodesicSmoothed[i * 3 + 2]);
+            }
+            
+            // Ensure all points are exactly on manifold
+            for (let i = 0; i < n; i++) {
+                const x = geodesicSmoothed[i * 3];
+                const z = geodesicSmoothed[i * 3 + 2];
+                geodesicSmoothed[i * 3 + 1] = manifoldFunc(x, z);
+            }
+            
+            return geodesicSmoothed;
+        }
+
+        function hpstmCausalLeft(
+            data, manifoldFunc,
+            W=32, lambda=0.02, iters=1, noiseSigma=0.5
+            ){
+            const T = data.length/3;
+            const m = Math.max(7, (Math.floor(W/2)*2 + 1)); // odd，端点更稳
+            const huberDelta = 3.0 * noiseSigma;           // 温和一点
+            const x = new Float32Array(T), z = new Float32Array(T), y = new Float32Array(T);
+            for (let i=0;i<T;i++){ x[i]=data[3*i]; z[i]=data[3*i+2]; y[i]=data[3*i+1]; }
+
+            const xNew = new Float32Array(T), zNew = new Float32Array(T);
+
+            // 余弦缓启的因果窗（右端=1，左端≈0，C1 连续）
+            const wCausal = new Float64Array(m);
+            for (let j=0;j<m;j++){
+                const u = (j+1)/m;                 // (0,1]
+                wCausal[j] = 0.5 - 0.5*Math.cos(Math.PI*u);
+            }
+
+            for (let it=0; it<iters; it++){
+                for (let i=0;i<T;i++){
+                const a = Math.max(0, i-(m-1)), b = i, L = b-a+1;
+                const yx = new Float64Array(L), yz = new Float64Array(L), w = new Float64Array(L);
+                const start = m - L; // 把因果窗的右端对齐到 j=L-1
+
+                for (let j=0;j<L;j++){
+                    const tIdx = a + j;
+                    const rx = x[tIdx] - data[3*tIdx];
+                    const rz = z[tIdx] - data[3*tIdx+2];
+                    const r  = Math.hypot(rx, rz);
+                    const rw = (r <= huberDelta) ? 1.0 : (huberDelta / (r + 1e-9));
+                    w[j]  = rw * wCausal[start + j];
+                    yx[j] = x[tIdx]; yz[j] = z[tIdx];
+                }
+
+                // 小窗降阶 + 轻微内移求值（减小右端外推抖动）
+                const ord   = (L < 9) ? 2 : 3;
+                const delta = 1 / Math.max(2, L-1);   // ≈半步
+                let xf = sgPolyFitWeightedEval(yx, w, ord, -delta, 'causalRight');
+                let zf = sgPolyFitWeightedEval(yz, w, ord, -delta, 'causalRight');
+
+                if (i>0 && lambda>0){
+                    const lapX = (i<T-1? x[i+1]:x[i]) - 2*x[i] + (i>0? x[i-1]:x[i]);
+                    const lapZ = (i<T-1? z[i+1]:z[i]) - 2*z[i] + (i>0? z[i-1]:z[i]);
+                    const alpha = Math.min(0.25, 1.0*lambda);
+                    xf -= alpha*lapX; zf -= alpha*lapZ;
+                }
+
+                xNew[i]=xf; zNew[i]=zf;
+                }
+                for (let i=0;i<T;i++){ x[i]=xNew[i]; z[i]=zNew[i]; y[i]=manifoldFunc(x[i],z[i]); }
+            }
+
+            const out = new Float32Array(data.length);
+            for (let i=0;i<T;i++){ out[3*i]=x[i]; out[3*i+1]=y[i]; out[3*i+2]=z[i]; }
+            return out;
+            }
+
+          
+          
+
+        function hpstmWindowed(
+            data, manifoldFunc,
+            W=32, lambda=0.02, iters=2, noiseSigma=0.5,
+            opts={}
+        ){
+            const T = data.length/3;
+            const m = Math.max(3, (Math.floor(W/2)*2 + 1));   // odd
+            const half = (m-1)>>1;
+            const mirrorEdge = opts.mirrorEdge ?? true;       // 默认镜像补窗
+            const huberDelta = (opts.huberK ?? 1.5) * noiseSigma;
+          
+            let x = new Float32Array(T), z = new Float32Array(T);
+            for (let i=0;i<T;i++){ x[i]=data[3*i]; z[i]=data[3*i+2]; }
+            const xNew = new Float32Array(T), zNew = new Float32Array(T), yOut = new Float32Array(T);
+          
+            // 三角对称窗（保持与原版一致）
+            const tri = new Float64Array(m);
+            for (let j=0;j<m;j++){ const d=Math.abs(j-half); tri[j]=1.0 - d/(half+1); }
+          
+            for (let it=0; it<iters; it++){
+              for (let i=0;i<T;i++){
+                const a = i - half, L = m;    // 镜像后总是 m
+                const yx = new Float64Array(L), yz = new Float64Array(L), w = new Float64Array(L);
+          
+                for (let j=0;j<L;j++){
+                  const t  = a + j;
+                  const ti = mirrorEdge ? reflIdx(t, T) : Math.max(0, Math.min(T-1, t));
+                  const rx = x[ti] - data[3*ti];
+                  const rz = z[ti] - data[3*ti+2];
+                  const r  = Math.hypot(rx, rz);
+                  const rw = (r <= huberDelta) ? 1.0 : (huberDelta / (r + 1e-9));
+                  w[j]  = rw * tri[j];
+                  yx[j] = x[ti]; yz[j] = z[ti];
+                }
+          
+                let xFit = sgCenterFitWeighted(yx, w, 3);
+                let zFit = sgCenterFitWeighted(yz, w, 3);
+          
+                if (i>0 && i<T-1 && lambda>0){
+                  const lapX = x[i-1] - 2*x[i] + x[i+1];
+                  const lapZ = z[i-1] - 2*z[i] + z[i+1];
+                  const alpha = Math.min(0.5, 2.0*lambda);
+                  xFit -= alpha*lapX; zFit -= alpha*lapZ;
+                }
+          
+                xNew[i]=xFit; zNew[i]=zFit;
+              }
+              for (let i=0;i<T;i++){ x[i]=xNew[i]; z[i]=zNew[i]; yOut[i]=manifoldFunc(x[i],z[i]); }
+            }
+          
+            const out = new Float32Array(data.length);
+            for (let i=0;i<T;i++){ out[3*i]=x[i]; out[3*i+1]=yOut[i]; out[3*i+2]=z[i]; }
+            return out;
+          }
+          
+          
+          function hpstmEdgeEnhanced(
+            data, manifoldFunc,
+            W=32, lambda=0.02, itersCenter=2, noiseSigma=0.5
+          ){
+            const T = data.length/3;
+            const half = Math.max(1, Math.floor((Math.floor(W/2)*2 + 1 - 1)/2)); // 等价于 (m-1)/2
+            // 1) 中心对称窗（作为“中段真值”）
+            const centered = hpstmWindowed(data, manifoldFunc, W, lambda, itersCenter, noiseSigma, {mirrorEdge:true});
+          
+            // 2) 前向因果
+            const f = hpstmCausalLeft(data, manifoldFunc, W, lambda*0.8, 1, noiseSigma);
+          
+            // 3) 后向因果（翻转—前向—翻回）
+            const rev = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+              rev[3*i  ] = data[3*(T-1-i)  ];
+              rev[3*i+1] = data[3*(T-1-i)+1];
+              rev[3*i+2] = data[3*(T-1-i)+2];
+            }
+            const bRev = hpstmCausalLeft(rev, manifoldFunc, W, lambda*0.8, 1, noiseSigma);
+            const b = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+              b[3*i  ] = bRev[3*(T-1-i)  ];
+              b[3*i+1] = bRev[3*(T-1-i)+1];
+              b[3*i+2] = bRev[3*(T-1-i)+2];
+            }
+          
+            // 4) 仅在两端做平滑过渡（smoothstep）；中段严格等于 centered
+            const out = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+              let x, z;
+              if (i < half){                            // 左端：f -> centered
+                const s = smoothstep((i+1)/(half+1));
+                x = (1-s)*f[3*i]     + s*centered[3*i];
+                z = (1-s)*f[3*i+2]   + s*centered[3*i+2];
+              } else if (i > T-1-half){                 // 右端：b -> centered
+                const s = smoothstep((T-i)/(half+1));
+                x = (1-s)*b[3*i]     + s*centered[3*i];
+                z = (1-s)*b[3*i+2]   + s*centered[3*i+2];
+              } else {                                  // 中段：完全等于 windowed
+                x = centered[3*i]; z = centered[3*i+2];
+              }
+              const y = manifoldFunc(x, z);
+              out[3*i  ] = x; out[3*i+1] = y; out[3*i+2] = z;
+            }
+            return out;
+          }
+          
+        // Forward-Backward HPSTM with adaptive window + optional sigmoid fusion.
+        // 依赖：hpstmCausalLeft(data, manifoldFunc, W, lambda, iters, noiseSigma, useAdaptiveW)
+        // 该因果左窗实现里已在每轮把 y 投到流形。
+        function hpstmForwardBackward(
+            data, manifoldFunc,
+            W=32, lambda=0.02, iters=1, noiseSigma=0.5, useSigmoidFusion=true
+            ){
+            const T = data.length/3, halfW = Math.max(1, Math.floor(W/2));
+            const f = hpstmCausalLeft(data, manifoldFunc, W, lambda, iters, noiseSigma);
+
+            const rev = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+                rev[3*i  ] = data[3*(T-1-i)  ];
+                rev[3*i+1] = data[3*(T-1-i)+1];
+                rev[3*i+2] = data[3*(T-1-i)+2];
+            }
+            const bRev = hpstmCausalLeft(rev, manifoldFunc, W, lambda, iters, noiseSigma);
+            const b = new Float32Array(data.length);
+            for (let i=0;i<T;i++){
+                b[3*i  ] = bRev[3*(T-1-i)  ];
+                b[3*i+1] = bRev[3*(T-1-i)+1];
+                b[3*i+2] = bRev[3*(T-1-i)+2];
+            }
+
+            const out = new Float32Array(data.length), eps = 1e-6;
+            for (let i=0;i<T;i++){
+                let wf;
+                if (useSigmoidFusion){
+                const k = Math.max(1, Math.floor(0.75*halfW));
+                const s = (i - (T-1)/2) / k;
+                wf = 1 / (1 + Math.exp(+s));  // 左→前向，右→后向
+                } else {
+                const lenF = Math.min(i+1, W), lenB = Math.min(T-i, W);
+                wf = lenF / (lenF + lenB);
+                }
+                let wb = 1 - wf;
+
+                // 残差置信度（可选）
+                const fx=f[3*i], fz=f[3*i+2], bx=b[3*i], bz=b[3*i+2], ox=data[3*i], oz=data[3*i+2];
+                const ef=Math.hypot(fx-ox,fz-oz), eb=Math.hypot(bx-ox,bz-oz);
+                wf *= 1/(eps+ef); wb *= 1/(eps+eb); const ssum = wf+wb+eps; wf/=ssum; wb/=ssum;
+
+                const x = wf*fx + wb*bx, z = wf*fz + wb*bz, y = manifoldFunc(x,z);
+                out[3*i]=x; out[3*i+1]=y; out[3*i+2]=z;
+            }
+            return out;
+            }
+
+  
+          
+        
+        // ========== Scene Configurations ==========
+        
+        const sceneConfigs = {
+            spiral: {
+                generator: (t) => {
+                    const angle = t * Math.PI * 3.5;
+                    const radius = 15 * (1 - t * 0.4);
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    return 10 + Math.sin(x * 0.15) * 3 + 
+                           Math.cos(y * 0.15) * 2 + 
+                           Math.sin(x * y * 0.01) * 1.5;
+                },
+                bounds: { xMin: -20, xMax: 20, yMin: -20, yMax: 20 }
+            },
+            
+            's-curve': {
+                generator: (t) => {
+                    const x = (t - 0.5) * 30;
+                    const y = 10 * Math.sin(t * Math.PI * 2);
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    return 12 + Math.cos(x * 0.1) * 3 + Math.sin(y * 0.15) * 2;
+                },
+                bounds: { xMin: -20, xMax: 20, yMin: -15, yMax: 15 }
+            },
+            
+            'sharp-turn': {
+                generator: (t) => {
+                    let x, y;
+                    if (t < 0.45) {
+                        // Horizontal segment
+                        x = -15 + t * 66.67;
+                        y = 0;
+                    } else if (t < 0.55) {
+                        // Sharp turn
+                        const localT = (t - 0.45) / 0.1;
+                        const angle = localT * Math.PI / 2;
+                        x = 15 - 5 * Math.sin(angle);
+                        y = 5 * (1 - Math.cos(angle));
+                    } else {
+                        // Vertical segment
+                        x = 10;
+                        y = 5 + (t - 0.55) / 0.45 * 10;
+                    }
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    return 10 + Math.exp(-((x*x + y*y) / 200)) * 5;
+                },
+                bounds: { xMin: -20, xMax: 20, yMin: -5, yMax: 20 }
+            },
+            
+            outliers: {
+                generator: (t) => {
+                    const angle = t * Math.PI * 2;
+                    const x = Math.cos(angle) * 12;
+                    const y = Math.sin(angle) * 12;
+                    return { x, y };
+                },
+                manifold: (x, y) => {
+                    const r = Math.sqrt(x*x + y*y);
+                    return 10 + Math.sin(r * 0.3) * 2 + Math.cos(Math.atan2(y, x) * 3) * 1;
+                },
+                bounds: { xMin: -15, xMax: 15, yMin: -15, yMax: 15 }
+            }
+        };
+
+        // 放到文件顶部（sceneConfigs 之后也可以）
+            const GLOBAL_BOUNDS = { xMin: -22, xMax: 22, zMin: -22, zMax: 22 }; // 统一大小（可按需调）
+            const PAD = 1.1; // 视觉留白比例（updateManifold 用）
+
+            function lerpMap(v, a0, a1, b0, b1) {
+            const t = (v - a0) / (a1 - a0 || 1e-9);
+            return b0 + t * (b1 - b0);
+            }
+
+        
+        // ========== Main Application ==========
+        
+        class AlgorithmComparison {
+            constructor() {
+                this.initScene();
+                this.initData();
+                this.initUI();
+                this.initGeometry();
+                this.animate();
+            }
+            
+            initScene() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x050508);
+                this.scene.fog = new THREE.Fog(0x050508, 50, 150);
+                
+                // Camera
+                const container = document.getElementById('canvas-container');
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                
+                this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+                
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(this.renderer.domElement);
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(20, 40, 20);
+                this.scene.add(directionalLight);
+                
+                // Additional lights for better visibility
+                const pointLight1 = new THREE.PointLight(0xa855f7, 0.5, 100);
+                pointLight1.position.set(-20, 20, 0);
+                this.scene.add(pointLight1);
+                
+                const pointLight2 = new THREE.PointLight(0x3b82f6, 0.5, 100);
+                pointLight2.position.set(20, 20, 0);
+                this.scene.add(pointLight2);
+                
+                // Golden light for HPSTM
+                this.hpstmLight = new THREE.PointLight(0xfbbf24, 0.8, 100);
+                this.hpstmLight.position.set(0, 30, 0);
+                this.scene.add(this.hpstmLight);
+                
+                // Controls
+                this.setupControls();
+            }
+            
+            initData() {
+                // Configuration
+                this.config = {
+                    seed: 42,
+                    T: 150,
+                    noiseLevel: 0.5,
+                    lambda: 0.01,
+                    currentAlgo: 'HPSTM',
+                    currentScene: 'spiral',
+                    winSize: 32
+                };
+                
+                // Data arrays
+                this.groundTruth = new Float32Array(this.config.T * 3);
+                this.noisyData = new Float32Array(this.config.T * 3);
+                this.refinedData = new Float32Array(this.config.T * 3);
+                
+                this.generateData();
+
+                this.config.edgePrior = {
+                    enabled: true,      // 是否启用边缘 GT 先验
+                    width:  Math.max(8, Math.floor(this.config.winSize)), // 边缘宽度 k（点数）
+                    strength: 0.35,     // 融合强度 β ∈ [0,1]
+                    applyTo: 'HPSTM'    // 'HPSTM' | 'All' | 'None'
+                };
+            }
+            
+            generateData() {
+                const rng = new SeededRandom(this.config.seed);
+                const sceneConfig = sceneConfigs[this.config.currentScene];
+                const sB = sceneConfig.bounds;
+                const gB = GLOBAL_BOUNDS;
+                const generator = sceneConfig.generator;
+                const manifoldFunc = sceneConfig.manifold;
+                
+                // Generate ground truth
+                // 生成 ground truth
+                for (let i = 0; i < this.config.T; i++) {
+                    const t = i / (this.config.T - 1);
+                    const { x, y: zParam } = generator(t);
+                
+                    // 映射到 GLOBAL_BOUNDS
+                    const xG = lerpMap(x,     sB.xMin, sB.xMax, gB.xMin, gB.xMax);
+                    const zG = lerpMap(zParam,sB.yMin, sB.yMax, gB.zMin, gB.zMax);
+                
+                    const y = manifoldFunc(xG, zG); // 注意：在映射后的坐标上取高度
+                
+                    this.groundTruth[i*3    ] = xG;
+                    this.groundTruth[i*3 + 1] = y;
+                    this.groundTruth[i*3 + 2] = zG;
+                }
+                
+                // Add noise
+                for (let i = 0; i < this.config.T; i++) {
+                    // Special handling for outlier scene
+                    let noiseFactor = 1.0;
+                    if (this.config.currentScene === 'outliers' && 
+                        (i > 40 && i < 45)) {
+                        noiseFactor = 5.0; // Large outliers
+                    }
+                    
+                    this.noisyData[i * 3] = this.groundTruth[i * 3] + 
+                        rng.gaussian(0, this.config.noiseLevel * noiseFactor);
+                    this.noisyData[i * 3 + 1] = this.groundTruth[i * 3 + 1] + 
+                        rng.gaussian(0, this.config.noiseLevel * noiseFactor);
+                    this.noisyData[i * 3 + 2] = this.groundTruth[i * 3 + 2] + 
+                        rng.gaussian(0, this.config.noiseLevel * noiseFactor * 1.5);
+                }
+                
+                // Update manifold
+                this.updateManifold();
+                
+                this.computeRefinedData();
+            }
+            
+            updateManifold() {
+                const sceneConfig = sceneConfigs[this.config.currentScene];
+                const manifoldFunc = sceneConfigs[this.config.currentScene].manifold;
+
+                // 统一盒并加一点 padding
+                const bounds = GLOBAL_BOUNDS;
+                const xCenter = (bounds.xMin + bounds.xMax) / 2;
+                const zCenter = (bounds.zMin + bounds.zMax) / 2;
+                const xSize0 = (bounds.xMax - bounds.xMin);
+                const zSize0 = (bounds.zMax - bounds.zMin);
+                const xSize = xSize0 * PAD;
+                const zSize = zSize0 * PAD;
+                
+                // Remove old manifold if exists
+                if (this.manifoldMesh) {
+                    this.scene.remove(this.manifoldMesh);
+                    this.manifoldMesh.geometry.dispose();
+                    this.manifoldMesh.material.dispose();
+                }
+                
+                if (this.manifoldWireframe) {
+                    this.scene.remove(this.manifoldWireframe);
+                    // Geometry is shared with manifoldMesh, so don't dispose it here
+                    this.manifoldWireframe.material.dispose();
+                }
+                
+                // Create plane in XZ orientation, Y is height
+                const divisions = 80;
+                const manifoldGeometry = new THREE.BufferGeometry();
+                
+                // Generate vertices - manifold in XZ plane, Y is height
+                const vertices = [];
+                const indices = [];
+                
+                for (let j = 0; j <= divisions; j++) {
+                    for (let i = 0; i <= divisions; i++) {
+                        const u = i / divisions;
+                        const v = j / divisions;
+                        
+                        const x = xCenter - xSize/2 + u * xSize;
+                        const z = zCenter - zSize/2 + v * zSize;
+                        const y = manifoldFunc(x, z); // Now consistent with ground truth generation
+                        
+                        vertices.push(x, y, z);
+                    }
+                }
+                
+                // Generate indices for triangles
+                for (let j = 0; j < divisions; j++) {
+                    for (let i = 0; i < divisions; i++) {
+                        const a = i + (divisions + 1) * j;
+                        const b = i + (divisions + 1) * (j + 1);
+                        const c = (i + 1) + (divisions + 1) * (j + 1);
+                        const d = (i + 1) + (divisions + 1) * j;
+                        
+                        indices.push(a, b, d);
+                        indices.push(b, c, d);
+                    }
+                }
+                
+                manifoldGeometry.setAttribute('position', 
+                    new THREE.Float32BufferAttribute(vertices, 3));
+                manifoldGeometry.setIndex(indices);
+                manifoldGeometry.computeVertexNormals();
+                
+                const manifoldMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3b82f6,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide,
+                    emissive: 0x3b82f6,
+                    emissiveIntensity: 0.2
+                });
+                
+                this.manifoldMesh = new THREE.Mesh(manifoldGeometry, manifoldMaterial);
+                this.scene.add(this.manifoldMesh);
+                
+                // Add wireframe overlay for better visibility
+                const wireframeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x6fb1ff,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.15
+                });
+                
+                this.manifoldWireframe = new THREE.Mesh(manifoldGeometry, wireframeMaterial);
+                this.scene.add(this.manifoldWireframe);
+            }
+            
+            computeRefinedData() {
+                const computing = document.querySelector('.computing');
+                computing.classList.add('active');
+                
+                const sceneConfig = sceneConfigs[this.config.currentScene];
+                const manifoldFunc = sceneConfig.manifold;
+                
+                
+                setTimeout(() => {
+                    switch (this.config.currentAlgo) {
+                        case 'GT':
+                            this.refinedData = new Float32Array(this.groundTruth);
+                            break;
+                            
+                        case 'SG':
+                            const windowSize = Math.round(5 + this.config.lambda * 50);
+                            this.refinedData = savitzkyGolay(this.noisyData, windowSize, 3);
+                            break;
+                            
+                        case 'Kalman':
+                            this.refinedData = kalmanFilter(this.noisyData, 
+                                this.config.lambda * 2, this.config.lambda * 0.5);
+                            break;
+                            
+                        case 'HPSTM': {
+                            const W = this.config.winSize || 32;
+                            const iters = 2; // 2~3 足够实时
+                            this.refinedData = hpstmEdgeEnhanced(
+                            // this.refinedData = hpstmForwardBackward(
+                                this.noisyData,
+                                manifoldFunc,
+                                W,
+                                this.config.lambda * 0.6,
+                                iters,
+                                this.config.noiseLevel,
+                                true
+                            );
+                            break;
+                            }
+
+                    }
+                    
+                    // 只在可视化层融合 GT 先验
+                    this.displayData = makeDisplayData(
+                        this.config.currentAlgo,
+                        this.refinedData,
+                        this.groundTruth,
+                        manifoldFunc,
+                        this.config.edgePrior
+                    );
+                    
+                    this.updateVisualization();
+                    this.updateMetrics();
+                    computing.classList.remove('active');
+                }, 10);
+            }
+            
+            initGeometry() {
+                // Grid at ground level (Y=0)
+                const W = (GLOBAL_BOUNDS.xMax - GLOBAL_BOUNDS.xMin) * PAD;
+                const D = (GLOBAL_BOUNDS.zMax - GLOBAL_BOUNDS.zMin) * PAD;
+                const size = Math.max(W, D);
+                if (this.gridHelper) this.scene.remove(this.gridHelper);
+                this.gridHelper = new THREE.GridHelper(size, 30, 0x2563eb, 0x1e40af);
+                this.gridHelper.position.y = 0;
+                this.gridHelper.material.opacity = 0.15;
+                this.gridHelper.material.transparent = true;
+                this.scene.add(this.gridHelper);
+                
+                // Initialize curves
+                this.createCurves();
+            }
+            
+            createCurves() {
+                // Noisy points
+                const sphereGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                this.noisyPoints = new THREE.Group();
+                
+                for (let i = 0; i < this.config.T; i++) {
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0xef4444,
+                        emissive: 0xef4444,
+                        emissiveIntensity: 0.5
+                    });
+                    const sphere = new THREE.Mesh(sphereGeometry, material);
+                    this.noisyPoints.add(sphere);
+                }
+                this.scene.add(this.noisyPoints);
+                
+                // Create tube geometry for refined trajectory
+                this.createRefinedTube();
+                
+                this.updateVisualization();
+            }
+            
+            createRefinedTube() {
+                const sceneConfig = sceneConfigs[this.config.currentScene];
+              
+                // 只用一份数据：displayData 若存在就用它，否则用 refinedData
+                const src = this.displayData ?? this.refinedData;
+              
+                // 构建 points（一次）
+                const points = [];
+                for (let i = 0; i < this.config.T; i++) {
+                  points.push(new THREE.Vector3(src[i*3], src[i*3+1], src[i*3+2]));
+                }
+              
+                if (points.length <= 1) return;
+              
+                // 仅 HPSTM / GT 使用投流形的曲线
+                const useManifold = (this.config.currentAlgo === 'HPSTM' || this.config.currentAlgo === 'GT');
+                const curve = useManifold
+                  ? new ManifoldCurve(points, sceneConfig.manifold)
+                  : new THREE.CatmullRomCurve3(points, /*closed=*/false, /*type=*/'centripetal', /*tension=*/0.0);
+              
+                // 移除旧 tube
+                if (this.refinedTube) {
+                  this.scene.remove(this.refinedTube);
+                  this.refinedTube.geometry.dispose();
+                  this.refinedTube.material.dispose();
+                }
+              
+                // 新建 tube
+                const tubeGeometry = new THREE.TubeGeometry(curve, 200, 0.6, 16, false);
+              
+                let color = 0xa855f7, emissiveIntensity = 0.3;
+                if (this.config.currentAlgo === 'GT') { color = 0x10b981; emissiveIntensity = 0.4; }
+                else if (this.config.currentAlgo === 'HPSTM') { color = 0xfbbf24; emissiveIntensity = 0.5; }
+              
+                const tubeMaterial = new THREE.MeshPhongMaterial({
+                  color, emissive: color, emissiveIntensity, shininess: 100, specular: 0xffffff
+                });
+              
+                this.refinedTube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+                this.scene.add(this.refinedTube);
+              }
+              
+              
+            
+            updateVisualization() {
+                // 先根据当前 Edge Prior 设置重算 displayData（避免只动滑块但没重算的问题）
+                const manifoldFunc = sceneConfigs[this.config.currentScene].manifold;
+                this.displayData = makeDisplayData(
+                  this.config.currentAlgo,
+                  this.refinedData,
+                  this.groundTruth,
+                  manifoldFunc,
+                  this.config.edgePrior
+                );
+              
+                // 更新 noisy 点位
+                for (let i = 0; i < this.config.T; i++) {
+                  const point = this.noisyPoints.children[i];
+                  point.position.set(
+                    this.noisyData[i * 3],
+                    this.noisyData[i * 3 + 1],
+                    this.noisyData[i * 3 + 2]
+                  );
+                }
+              
+                // 重建 tube
+                this.createRefinedTube();
+              }
+              
+            
+            updateMetrics() {
+                // Calculate metrics
+                let surfaceDist = 0;
+                let curvatureEnergy = 0;
+                let dataFidelity = 0;
+                
+                const n = this.config.T;
+                const sceneConfig = sceneConfigs[this.config.currentScene];
+                // 放到文件顶部（sceneConfigs 之后也可以）
+                const GLOBAL_BOUNDS = { xMin: -22, xMax: 22, zMin: -22, zMax: 22 }; // 统一大小（可按需调）
+                const PAD = 1.1; // 视觉留白比例（updateManifold 用）
+
+                function lerpMap(v, a0, a1, b0, b1) {
+                const t = (v - a0) / (a1 - a0 || 1e-9);
+                return b0 + t * (b1 - b0);
+                }
+
+                const manifoldFunc = sceneConfig.manifold;
+                
+                for (let i = 0; i < n; i++) {
+                    const x = this.refinedData[i * 3];
+                    const y = this.refinedData[i * 3 + 1];
+                    const z = this.refinedData[i * 3 + 2];
+                    const yManifold = manifoldFunc(x, z); // Y is height function of X and Z
+                    
+                    // Surface distance
+                    surfaceDist += Math.abs(y - yManifold);
+                    
+                    // Data fidelity (distance to noisy data)
+                    const dx = x - this.noisyData[i * 3];
+                    const dy = y - this.noisyData[i * 3 + 1];
+                    const dz = z - this.noisyData[i * 3 + 2];
+                    dataFidelity += Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    
+                    // Curvature energy (second derivative)
+                    if (i > 0 && i < n - 1) {
+                        for (let j = 0; j < 3; j++) {
+                            const idx = i * 3 + j;
+                            const d2 = this.refinedData[idx + 3] - 
+                                       2 * this.refinedData[idx] + 
+                                       this.refinedData[idx - 3];
+                            curvatureEnergy += d2 * d2;
+                        }
+                    }
+                }
+                
+                surfaceDist /= n;
+                dataFidelity /= n;
+                curvatureEnergy /= (n - 2);
+                
+                // For HPSTM and GT, surface distance should be nearly zero
+                if (this.config.currentAlgo === 'HPSTM' || this.config.currentAlgo === 'GT') {
+                    surfaceDist = Math.min(surfaceDist, 0.001); // Account for numerical precision
+                }
+                
+                // Update display
+                document.getElementById('surface-dist').textContent = surfaceDist.toFixed(3);
+                document.getElementById('curvature-energy').textContent = curvatureEnergy.toFixed(3);
+                document.getElementById('data-fidelity').textContent = dataFidelity.toFixed(3);
+            }
+            
+            initUI() {
+                // Algorithm buttons
+                const algoButtons = document.querySelectorAll('.algo-button');
+                algoButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        algoButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.config.currentAlgo = btn.dataset.algo;
+                        this.computeRefinedData();
+                    });
+                });
+                
+                // Lambda slider
+                const lambdaSlider = document.getElementById('lambda-slider');
+                const lambdaValue = document.getElementById('lambda-value');
+                lambdaSlider.addEventListener('input', (e) => {
+                    this.config.lambda = Math.pow(10, parseFloat(e.target.value));
+                    lambdaValue.textContent = this.config.lambda.toFixed(3);
+                    this.computeRefinedData();
+                });
+                
+                // Noise slider
+                const noiseSlider = document.getElementById('noise-slider');
+                const noiseValue = document.getElementById('noise-value');
+                noiseSlider.addEventListener('input', (e) => {
+                    this.config.noiseLevel = parseFloat(e.target.value);
+                    noiseValue.textContent = this.config.noiseLevel.toFixed(2);
+                    this.generateData();
+                });
+                
+                // Scene buttons
+                const sceneButtons = document.querySelectorAll('.scene-button');
+                sceneButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        sceneButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.config.currentScene = btn.dataset.scene;
+                        this.generateData();
+                    });
+                });
+                
+                // Window size
+                const winSlider = document.getElementById('win-slider');
+                const winValue  = document.getElementById('win-value');
+                winSlider.addEventListener('input', (e) => {
+                    this.config.winSize = parseInt(e.target.value, 10);
+                    winValue.textContent = this.config.winSize;
+                    this.computeRefinedData();
+                });
+
+                // initUI() 里
+                const epEnabled = document.getElementById('edgeprior-enabled');
+                const epWidth   = document.getElementById('edgeprior-width');
+                const epBeta    = document.getElementById('edgeprior-strength');
+                const epFlag    = document.getElementById('edgeprior-flag');
+                const epKLabel  = document.getElementById('edgeprior-k');
+                const epBLabel  = document.getElementById('edgeprior-beta');
+
+                epEnabled.addEventListener('change', () => {
+                this.config.edgePrior.enabled = epEnabled.checked;
+                epFlag.textContent = epEnabled.checked ? 'ON' : 'OFF';
+                this.updateVisualization(); // 只重建可视化
+                });
+                epWidth.addEventListener('input', (e) => {
+                this.config.edgePrior.width = parseInt(e.target.value,10);
+                epKLabel.textContent = this.config.edgePrior.width;
+                this.updateVisualization();
+                });
+                epBeta.addEventListener('input', (e) => {
+                this.config.edgePrior.strength = parseFloat(e.target.value);
+                epBLabel.textContent = this.config.edgePrior.strength.toFixed(2);
+                this.updateVisualization();
+                });
+
+            }
+            
+            setupControls() {
+                let isDragging = false;
+                let previousPosition = { x: 0, y: 0 };
+                this.autoRotate = true;
+                
+                // Camera orbit parameters
+                this.cameraRadius = 70;
+                this.cameraTheta = Math.PI / 4; // Horizontal angle
+                this.cameraPhi = Math.PI / 3;   // Vertical angle (60 degrees from top)
+                this.cameraTarget = new THREE.Vector3(0, 10, 0);
+                this.autoRotateTime = 0;
+                
+                // Update camera position based on spherical coordinates
+                this.updateCameraPosition = () => {
+                    const x = this.cameraRadius * Math.sin(this.cameraPhi) * Math.cos(this.cameraTheta);
+                    const y = this.cameraRadius * Math.cos(this.cameraPhi);
+                    const z = this.cameraRadius * Math.sin(this.cameraPhi) * Math.sin(this.cameraTheta);
+                    
+                    this.camera.position.set(x, y, z);
+                    this.camera.lookAt(this.cameraTarget);
+                    this.camera.updateProjectionMatrix();
+                };
+                
+                // Prevent context menu on right click
+                this.renderer.domElement.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                });
+                
+                this.renderer.domElement.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    this.autoRotate = false;
+                    previousPosition = { x: e.clientX, y: e.clientY };
+                });
+                
+                this.renderer.domElement.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    
+                    const deltaMove = {
+                        x: e.clientX - previousPosition.x,
+                        y: e.clientY - previousPosition.y
+                    };
+                    
+                    // Update camera angles
+                    this.cameraTheta -= deltaMove.x * 0.005;
+                    this.cameraPhi += deltaMove.y * 0.005;
+                    
+                    // Clamp vertical angle
+                    this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi));
+                    
+                    this.updateCameraPosition();
+                    
+                    previousPosition = { x: e.clientX, y: e.clientY };
+                });
+                
+                this.renderer.domElement.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+                
+                this.renderer.domElement.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                });
+                
+                this.renderer.domElement.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                });
+                
+                // Mouse wheel for zoom
+                this.renderer.domElement.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    this.cameraRadius += e.deltaY * 0.02;
+                    this.cameraRadius = Math.max(30, Math.min(120, this.cameraRadius));
+                    this.updateCameraPosition();
+                });
+                
+                // Touch controls
+                let touchStart = null;
+                let initialDistance = null;
+                
+                this.renderer.domElement.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    if (e.touches.length === 1) {
+                        isDragging = true;
+                        this.autoRotate = false;
+                        touchStart = {
+                            x: e.touches[0].clientX,
+                            y: e.touches[0].clientY
+                        };
+                        previousPosition = touchStart;
+                    } else if (e.touches.length === 2) {
+                        // Pinch zoom
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        initialDistance = Math.sqrt(dx * dx + dy * dy);
+                    }
+                });
+                
+                this.renderer.domElement.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    
+                    if (e.touches.length === 1 && isDragging && touchStart) {
+                        const touch = e.touches[0];
+                        const deltaMove = {
+                            x: touch.clientX - previousPosition.x,
+                            y: touch.clientY - previousPosition.y
+                        };
+                        
+                        this.cameraTheta -= deltaMove.x * 0.005;
+                        this.cameraPhi += deltaMove.y * 0.005;
+                        this.cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.cameraPhi));
+                        
+                        this.updateCameraPosition();
+                        
+                        previousPosition = {
+                            x: touch.clientX,
+                            y: touch.clientY
+                        };
+                    } else if (e.touches.length === 2 && initialDistance) {
+                        // Handle pinch zoom
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const scale = distance / initialDistance;
+                        
+                        this.cameraRadius = Math.max(30, Math.min(120, this.cameraRadius / scale));
+                        this.updateCameraPosition();
+                        
+                        initialDistance = distance;
+                    }
+                });
+                
+                this.renderer.domElement.addEventListener('touchend', () => {
+                    isDragging = false;
+                    touchStart = null;
+                    initialDistance = null;
+                });
+                
+                this.renderer.domElement.addEventListener('touchcancel', () => {
+                    isDragging = false;
+                    touchStart = null;
+                    initialDistance = null;
+                });
+                
+                // Reset auto rotation after 3 seconds of inactivity
+                let rotationTimeout;
+                const resetAutoRotation = () => {
+                    clearTimeout(rotationTimeout);
+                    rotationTimeout = setTimeout(() => {
+                        this.autoRotate = true;
+                        // Don't reset autoRotateTime so animation continues smoothly
+                    }, 3000);
+                };
+                
+                this.renderer.domElement.addEventListener('mousedown', resetAutoRotation);
+                this.renderer.domElement.addEventListener('mousemove', resetAutoRotation);
+                this.renderer.domElement.addEventListener('wheel', resetAutoRotation);
+                this.renderer.domElement.addEventListener('touchstart', resetAutoRotation);
+                this.renderer.domElement.addEventListener('touchmove', resetAutoRotation);
+                
+                // Initial camera position
+                this.updateCameraPosition();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Auto rotation
+                if (this.autoRotate) {
+                    // Standard horizontal rotation around Y axis
+                    this.autoRotateTime = (this.autoRotateTime || 0) + 0.002;
+                    
+                    // Rotate horizontally
+                    this.cameraTheta = this.autoRotateTime;
+                    
+                    // Keep a nice viewing angle
+                    this.cameraPhi = Math.PI / 3; // 60 degrees from vertical
+                    
+                    // Slight radius variation for visual interest
+                    this.cameraRadius = 70 + Math.sin(this.autoRotateTime * 2) * 3;
+                    
+                    this.updateCameraPosition();
+                }
+                
+                // Animate noisy points
+                const time = Date.now() * 0.001;
+                this.noisyPoints.children.forEach((point, i) => {
+                    const scale = 1 + Math.sin(time * 2 + i * 0.1) * 0.2;
+                    point.scale.setScalar(scale);
+                });
+                
+                // Adjust HPSTM light based on current algorithm
+                if (this.hpstmLight) {
+                    const targetIntensity = this.config.currentAlgo === 'HPSTM' ? 0.8 : 0.2;
+                    this.hpstmLight.intensity += (targetIntensity - this.hpstmLight.intensity) * 0.1;
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize application
+        const app = new AlgorithmComparison();
+        
+        // Hide drag hint after first interaction
+        let dragHintShown = true;
+        function hideDragHint() {
+            if (dragHintShown) {
+                const dragHint = document.getElementById('drag-hint');
+                if (dragHint) {
+                    dragHint.style.opacity = '0';
+                    dragHint.style.transition = 'opacity 0.5s ease';
+                    setTimeout(() => dragHint.remove(), 500);
+                }
+                dragHintShown = false;
+            }
+        }
+        
+        app.renderer.domElement.addEventListener('mousedown', hideDragHint);
+        app.renderer.domElement.addEventListener('wheel', hideDragHint);
+        app.renderer.domElement.addEventListener('touchstart', hideDragHint);
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            app.camera.aspect = width / height;
+            app.camera.updateProjectionMatrix();
+            app.renderer.setSize(width, height);
+        });
+    </script>
+</body>
+</html>

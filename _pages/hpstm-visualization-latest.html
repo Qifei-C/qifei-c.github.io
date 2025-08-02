@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPSTM: Human Pose Manifold Learning</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #050508;
+            cursor: grab;
+        }
+        
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+        
+        /* Title */
+        #title {
+            position: fixed;
+            top: 40px;
+            left: 50px;
+            z-index: 30;
+            pointer-events: none;
+        }
+        
+        #title .main-title {
+            font-size: 72px;
+            font-weight: 900;
+            color: #ffffff;
+            line-height: 1;
+            margin: 0;
+            letter-spacing: -2px;
+            text-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+        }
+        
+        #title .subtitle {
+            font-size: 24px;
+            font-weight: 300;
+            color: #a0a0b0;
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Transformer Status Panel */
+        #transformer-status {
+            position: fixed;
+            top: 40px;
+            right: 50px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+            z-index: 50;
+            animation: slideInRight 0.4s ease forwards;
+        }
+        
+        .status-indicator {
+            color: #ffffff;
+        }
+        
+        .status-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #a855f7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-bar {
+            height: 4px;
+            background: rgba(168, 85, 247, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        
+        .status-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c3aed, #a855f7);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+        
+        .status-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #a0a0b0;
+        }
+        
+        #processing-stage {
+            color: #10b981;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* Floating Labels Container */
+        .labels-container {
+            position: fixed;
+            left: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            z-index: 15;
+            max-height: 70vh;
+            justify-content: center;
+            pointer-events: none;
+        }
+        
+        .labels-container > * {
+            pointer-events: auto;
+        }
+        
+        .labels-container::before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 35px;
+            bottom: 35px;
+            width: 1px;
+            background: linear-gradient(
+                to bottom,
+                transparent 0%,
+                rgba(255, 255, 255, 0.1) 20%,
+                rgba(255, 255, 255, 0.1) 80%,
+                transparent 100%
+            );
+            opacity: 0.5;
+        }
+        
+        /* Floating Labels */
+        .label-bubble {
+            position: relative;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 14px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideInLabel 0.5s ease forwards;
+        }
+        
+        #noisy-label {
+            animation-delay: 0.3s;
+        }
+        
+        #manifold-label {
+            animation-delay: 0.5s;
+        }
+        
+        #trajectory-label {
+            animation-delay: 0.7s;
+        }
+        
+        #transformer-label {
+            animation-delay: 0.9s;
+        }
+        
+        @keyframes slideInLabel {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .label-bubble:hover {
+            transform: translateX(10px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        .label-bubble.active {
+            transform: translateX(10px) scale(1.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-left-width: 6px;
+        }
+        
+        .label-bubble strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .label-bubble .subtitle {
+            color: #a0a0b0;
+            font-size: 12px;
+        }
+        
+        /* Custom Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .modal-container {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(20, 20, 30, 0.95);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            padding: 0;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.active .modal-container {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .modal-header {
+            padding: 25px 30px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+            padding-right: 40px;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            color: #a0a0b0;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            transform: scale(1.1);
+        }
+        
+        .modal-body {
+            padding: 30px;
+            overflow-y: auto;
+            max-height: calc(80vh - 100px);
+        }
+        
+        .modal-content {
+            color: #e0e0e0;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        
+        .modal-content p {
+            margin: 0 0 20px 0;
+        }
+        
+        .modal-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .modal-content strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        .modal-list {
+            margin: 15px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+        
+        .modal-list li {
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 10px;
+            color: #d0d0d0;
+        }
+        
+        .modal-list li:before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--accent-color, #10b981);
+            font-size: 20px;
+            line-height: 20px;
+        }
+        
+        /* Color-specific modal accents */
+        .modal-container[data-theme="noisy"] {
+            --accent-color: #ef4444;
+        }
+        
+        .modal-container[data-theme="noisy"] .modal-header {
+            border-bottom-color: rgba(239, 68, 68, 0.2);
+        }
+        
+        .modal-container[data-theme="manifold"] {
+            --accent-color: #3b82f6;
+        }
+        
+        .modal-container[data-theme="manifold"] .modal-header {
+            border-bottom-color: rgba(59, 130, 246, 0.2);
+        }
+        
+        .modal-container[data-theme="trajectory"] {
+            --accent-color: #10b981;
+        }
+        
+        .modal-container[data-theme="trajectory"] .modal-header {
+            border-bottom-color: rgba(16, 185, 129, 0.2);
+        }
+        
+        .modal-container[data-theme="transformer"] {
+            --accent-color: #a855f7;
+        }
+        
+        .modal-container[data-theme="transformer"] .modal-header {
+            border-bottom-color: rgba(168, 85, 247, 0.2);
+        }
+        
+        /* Drag hint */
+        .drag-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 30, 0.9);
+            padding: 12px 24px;
+            border-radius: 20px;
+            color: #a0a0b0;
+            font-size: 13px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.8;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            letter-spacing: 0.5px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #title .main-title {
+                font-size: 48px;
+            }
+            
+            #title .subtitle {
+                font-size: 18px;
+            }
+            
+            #title {
+                left: 20px;
+            }
+            
+            #transformer-status {
+                top: auto;
+                bottom: 40px;
+                right: 20px;
+                min-width: 150px;
+                padding: 15px;
+            }
+            
+            .status-title {
+                font-size: 12px;
+            }
+            
+            .status-info {
+                font-size: 10px;
+            }
+            
+            .labels-container {
+                left: 20px;
+                gap: 20px;
+            }
+            
+            .labels-container::before {
+                display: none;
+            }
+            
+            .label-bubble {
+                padding: 12px 20px;
+                font-size: 12px;
+            }
+            
+            .drag-hint {
+                display: none;
+            }
+            
+            .modal-container {
+                width: 95%;
+                max-height: 90vh;
+            }
+            
+            .modal-header {
+                padding: 20px 25px 15px;
+            }
+            
+            .modal-title {
+                font-size: 20px;
+            }
+            
+            .modal-body {
+                padding: 20px;
+                max-height: calc(90vh - 90px);
+            }
+            
+            .modal-content {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="title">
+        <h1 class="main-title">HPSTM</h1>
+        <div class="subtitle">Pose Sequence Refinement on Manifold</div>
+    </div>
+    
+    <!-- Floating Labels -->
+    <div class="labels-container">
+        <div id="noisy-label" class="label-bubble" style="border-left-color: #ef4444;">
+            <strong>Noisy Input Sequence</strong>
+            <span class="subtitle">Jittered poses near true path</span>
+        </div>
+        
+        <div id="manifold-label" class="label-bubble" style="border-left-color: #3b82f6;">
+            <strong>Human Pose Manifold</strong>
+            <span class="subtitle">Space of valid configurations</span>
+        </div>
+        
+        <div id="trajectory-label" class="label-bubble" style="border-left-color: #10b981;">
+            <strong>Refined Trajectory</strong>
+            <span class="subtitle">Smooth continuous motion</span>
+        </div>
+        
+        <div id="transformer-label" class="label-bubble" style="border-left-color: #a855f7;">
+            <strong>Transformer Window</strong>
+            <span class="subtitle">±16 frames sliding attention window</span>
+        </div>
+    </div>
+    
+    <div class="drag-hint">Drag to rotate • Space to pause</div>
+
+    <!-- Transformer Status -->
+    <div id="transformer-status">
+        <div class="status-indicator">
+            <div class="status-title">Refinement Progress</div>
+            <div class="status-bar">
+                <div class="status-fill" id="processing-fill"></div>
+            </div>
+            <div class="status-info">
+                <span id="processing-stage">Idle</span>
+                <span id="processing-rate">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-container" id="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Title</h2>
+                <button class="modal-close" id="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-content" id="modal-content">
+                    <!-- Content will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // ========== Modal System ==========
+        class ModalSystem {
+            constructor() {
+                this.overlay = document.getElementById('modal-overlay');
+                this.container = document.getElementById('modal-container');
+                this.title = document.getElementById('modal-title');
+                this.content = document.getElementById('modal-content');
+                this.closeBtn = document.getElementById('modal-close');
+                
+                this.isOpen = false;
+                
+                // Setup event listeners
+                this.closeBtn.addEventListener('click', () => this.close());
+                this.overlay.addEventListener('click', (e) => {
+                    if (e.target === this.overlay) {
+                        this.close();
+                    }
+                });
+                
+                // Close on Escape key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.isOpen) {
+                        this.close();
+                    }
+                });
+            }
+            
+            open(title, content, theme = 'default') {
+                this.title.textContent = title;
+                this.content.innerHTML = content;
+                this.container.setAttribute('data-theme', theme);
+                this.overlay.classList.add('active');
+                this.isOpen = true;
+                
+                // Prevent body scroll when modal is open
+                document.body.style.overflow = 'hidden';
+            }
+            
+            close() {
+                this.overlay.classList.remove('active');
+                this.isOpen = false;
+                
+                // Restore body scroll
+                document.body.style.overflow = '';
+                
+                // Clear content after animation
+                setTimeout(() => {
+                    this.content.innerHTML = '';
+                    this.container.removeAttribute('data-theme');
+                }, 300);
+            }
+        }
+        
+        // Initialize modal system
+        const modal = new ModalSystem();
+        
+        // Modal content definitions
+        const modalContents = {
+            noisy: {
+                title: 'Noisy Input Sequence',
+                content: `
+                    <p><strong>These red points represent the raw, noisy observations of human poses.</strong></p>
+                    <p>In real-world motion capture and pose estimation systems, we never get perfect data. Instead, we receive noisy measurements that scatter around the true motion path due to:</p>
+                    <ul class="modal-list">
+                        <li>Sensor measurement errors</li>
+                        <li>Occlusions and tracking failures</li>
+                        <li>Environmental interference</li>
+                        <li>Quantization and calibration issues</li>
+                    </ul>
+                    <p>The HPSTM system uses a sliding Transformer window to process these noisy points sequentially, absorbing them and refining them into a smooth, physically plausible motion trajectory.</p>
+                    <p><strong>Watch as the purple Transformer tube moves along the path, absorbing these red points and converting them into refined green trajectory segments.</strong></p>
+                `,
+                theme: 'noisy'
+            },
+            manifold: {
+                title: 'Human Pose Manifold',
+                content: `
+                    <p><strong>The blue curved surface represents the manifold of valid human poses in high-dimensional space.</strong></p>
+                    <p>Not all configurations in pose space correspond to valid human poses. The human body has physical constraints:</p>
+                    <ul class="modal-list">
+                        <li>Joint angle limits and biomechanical constraints</li>
+                        <li>Bone length preservation</li>
+                        <li>Natural movement patterns</li>
+                        <li>Kinematic chain dependencies</li>
+                    </ul>
+                    <p>This manifold represents the subspace of all physically plausible human configurations. Each point on this surface corresponds to a valid pose that respects human anatomy.</p>
+                    <p><strong>The Transformer learns to project noisy observations onto this manifold, ensuring that the refined poses are always anatomically correct and physically plausible.</strong></p>
+                `,
+                theme: 'manifold'
+            },
+            trajectory: {
+                title: 'Refined Trajectory',
+                content: `
+                    <p><strong>The green path shows the smooth, continuous motion generated by the Transformer in real-time.</strong></p>
+                    <p>As the Transformer processes the noisy input sequence, it produces a refined trajectory that:</p>
+                    <ul class="modal-list">
+                        <li>Lies exactly on the pose manifold surface</li>
+                        <li>Maintains temporal coherence and smoothness</li>
+                        <li>Preserves the overall motion characteristics</li>
+                        <li>Eliminates jitter and measurement noise</li>
+                    </ul>
+                    <p>The key points along the trajectory pulsate to show the discrete pose estimates at each timestep, while the continuous tube represents the interpolated motion between them.</p>
+                    <p><strong>This trajectory is created incrementally as the Transformer window slides forward, demonstrating the online nature of the refinement process.</strong></p>
+                `,
+                theme: 'trajectory'
+            },
+            transformer: {
+                title: 'Transformer Window',
+                content: `
+                    <p><strong>The transparent purple tube represents the Transformer's sliding attention window.</strong></p>
+                    <p>Key characteristics of the processing window:</p>
+                    <ul class="modal-list">
+                        <li><strong>Window Size:</strong> ±16 frames sufficient for every kind of human motion</li>
+                        <li><strong>Structure:</strong> Hollow tube with visible thickness showing the processing region</li>
+                        <li><strong>Processing:</strong> All poses within this window are processed simultaneously using self-attention</li>
+                        <li><strong>Sliding Motion:</strong> Moves continuously along the trajectory at constant speed</li>
+                    </ul>
+                    <p>The tube structure visualizes how the Transformer:</p>
+                    <ul class="modal-list">
+                        <li>Absorbs noisy red points at the front edge</li>
+                        <li>Processes them using attention mechanisms inside the tube</li>
+                        <li>Outputs refined green trajectory segments at the back edge</li>
+                    </ul>
+                    <p><strong>The hollow design with end caps emphasizes that this is a bounded processing window that maintains local context while moving through the sequence.</strong></p>
+                `,
+                theme: 'transformer'
+            }
+        };
+
+        // ========== Moving Transformer Pipeline Class ==========
+        class TransformerPipeline {
+            constructor(scene, trajectoryCurve, noisyPoints) {
+                this.scene = scene;
+                this.trajectoryCurve = trajectoryCurve;
+                this.noisyPoints = noisyPoints;
+                this.group = new THREE.Group();
+                
+                this.cylinder = null;
+                this.position = 0; // Position along the trajectory (0-1)
+                this.windowSize = 0.08; // Larger window for better visual effect
+                this.absorbedPoints = [];
+                this.absorptionAnimations = []; // Track active absorption animations
+                this.outputParticles = [];
+                this.currentFadeAlpha = 1.0; // Track current fade alpha
+                this.sparkParticles = [];
+                
+                // 添加颜色缓存
+                this.colors = {
+                    outer: new THREE.Color(0xa855f7), // 外管基色(紫)
+                    inner: new THREE.Color(0x7c3aed), // 内管基色(深紫)
+                    ring : new THREE.Color(0xd6b2ff), // 端面环基色(浅紫)
+                    white: new THREE.Color(0xffffff)
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                // Create the transformer cylinder that follows the trajectory
+                const segments = 50; // Number of segments for smooth cylinder
+                
+                // Create a path for the cylinder
+                const cylinderPoints = [];
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments * this.windowSize;
+                    cylinderPoints.push(new THREE.Vector3(0, 0, -t * 100)); // Will be positioned later
+                }
+                
+                // Create cylinder geometry
+                const cylinderCurve = new THREE.CatmullRomCurve3(cylinderPoints);
+                const cylinderGeometry = new THREE.TubeGeometry(cylinderCurve, segments, 2.5, 32, false);
+                
+                // Transparent purple material with enhanced glow
+                const cylinderMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xa855f7,
+                    emissive: 0xa855f7,
+                    emissiveIntensity: 0.6,  // Enhanced initial glow
+                    transparent: true,
+                    opacity: 0.4,  // Slightly higher opacity
+                    side: THREE.DoubleSide,
+                    shininess: 150  // High shininess
+                });
+                
+                this.cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+                this.group.add(this.cylinder);
+                
+                
+                // Create particle pool for absorbed points
+                const particleGeometry = new THREE.SphereGeometry(0.65, 24, 24); // Larger spheres to match noisy points
+                for (let i = 0; i < 100; i++) { // Increased pool size
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0xef4444, // Start with red color
+                        emissive: 0xef4444,
+                        emissiveIntensity: 1.5,
+                        transparent: true,
+                        opacity: 0,
+                        depthWrite: false,
+                        depthTest: true,
+                        shininess: 150
+                    });
+                    const particle = new THREE.Mesh(particleGeometry, material);
+                    particle.visible = false;
+                    particle.castShadow = false;
+                    particle.receiveShadow = false;
+                    particle.renderOrder = 500; // Higher than transformer (100-103)
+                    particle.frustumCulled = false; // Always render
+                    this.scene.add(particle);
+                    this.absorbedPoints.push(particle);
+                }
+                
+                // Create output particles with enhanced glow
+                for (let i = 0; i < 30; i++) {
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x10b981,
+                        emissive: 0x10b981,
+                        emissiveIntensity: 1.5,  // Increased glow
+                        transparent: true,
+                        opacity: 0,
+                        depthWrite: false,
+                        shininess: 200  // High shininess
+                    });
+                    const particle = new THREE.Mesh(particleGeometry, material);
+                    particle.visible = false;
+                    particle.castShadow = false;
+                    particle.receiveShadow = false;
+                    particle.renderOrder = 200; // Render last
+                    this.scene.add(particle);
+                    this.outputParticles.push(particle);
+                }
+                
+                this.group.renderOrder = 100; // Transformer renders after most objects
+                this.scene.add(this.group);
+
+                const sparkGeometry = new THREE.SphereGeometry(0.25, 16, 16);  // Larger, smoother sparks
+                for (let i = 0; i < 60; i++) {
+                    const mat = new THREE.MeshPhongMaterial({
+                    color: 0xff6666,           // 初始亮红
+                    emissive: 0xff6666,
+                    emissiveIntensity: 2.0,
+                    transparent: true,
+                    opacity: 0,
+                    depthWrite: false,
+                    depthTest: true,
+                    shininess: 150
+                    });
+                    const spark = new THREE.Mesh(sparkGeometry, mat);
+                    spark.visible = false;
+                    spark.castShadow = false;
+                    spark.receiveShadow = false;
+                    spark.renderOrder = 400;     // 高于管道，低于吸入大颗粒
+                    spark.frustumCulled = false;
+                    this.scene.add(spark);
+                    this.sparkParticles.push(spark);
+                }
+
+                this.updatePosition(0);
+            }
+
+            
+            
+            updatePosition(position) {
+                this.position = position;
+              
+                // 移除旧的几何
+                if (this.cylinder) {
+                  this.cylinder.traverse((child) => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                      if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => mat.dispose());
+                      } else {
+                        child.material.dispose();
+                      }
+                    }
+                  });
+                  this.group.remove(this.cylinder);
+                }
+              
+                // === 关键变化：用 clamp 缩短几何长度，而不是透明度淡出 ===
+                const half = this.windowSize / 2;
+                let startT = position - half;
+                let endT   = position + half;
+              
+                // 夹在 [0,1]，这样到两端时几何会变短
+                startT = Math.max(0, startT);
+                endT   = Math.min(1, endT);
+              
+                // 若几何长度几乎为 0，就不再绘制
+                if (endT - startT <= 1e-4) {
+                  this.currentFadeAlpha = 1.0; // 维持强度计算为 1（不依赖淡入/淡出）
+                  return;
+                }
+              
+                // 沿轨迹采样生成本次窗口的曲线
+                const segments = 30;
+                const cylinderPoints = [];
+                for (let i = 0; i <= segments; i++) {
+                  const t = startT + (endT - startT) * (i / segments);
+                  cylinderPoints.push(this.trajectoryCurve.getPoint(t));
+                }
+                const cylinderCurve = new THREE.CatmullRomCurve3(cylinderPoints);
+              
+                // Tube 几何（双层：外壁 + 内壁），不再乘以 fadeAlpha
+                const tubularSegments = 80;
+                const outerRadius = 1.2;  // Slightly larger for bigger window
+                const innerRadius = 0.85;  // Proportionally adjusted
+                const radialSegments = 80;
+                const closed = false;
+              
+                const outerTubeGeometry = new THREE.TubeGeometry(
+                  cylinderCurve, tubularSegments, outerRadius, radialSegments, closed
+                );
+                const innerTubeGeometry = new THREE.TubeGeometry(
+                  cylinderCurve, tubularSegments, innerRadius, radialSegments, closed
+                );
+              
+                const outerTubeMaterial = new THREE.MeshPhongMaterial({
+                  color: 0xa855f7,
+                  emissive: 0xa855f7,
+                  emissiveIntensity: 0.8,   // Increased glow
+                  transparent: true,
+                  opacity: 0.6,            // Increased opacity
+                  shininess: 150,          // High shininess
+                  side: THREE.FrontSide,
+                  depthWrite: false
+                });
+              
+                const innerTubeMaterial = new THREE.MeshPhongMaterial({
+                  color: 0x7c3aed,
+                  emissive: 0x7c3aed,
+                  emissiveIntensity: 0.4,  // Moderate inner glow
+                  transparent: true,
+                  opacity: 0.4,           // Slightly higher opacity
+                  shininess: 100,
+                  side: THREE.BackSide,
+                  depthWrite: false
+                });
+              
+                const outerTubeMesh = new THREE.Mesh(outerTubeGeometry, outerTubeMaterial);
+                outerTubeMesh.renderOrder = 102;
+                outerTubeMesh.userData.type = 'outer'; // 添加类型标记
+                
+                const innerTubeMesh = new THREE.Mesh(innerTubeGeometry, innerTubeMaterial);
+                innerTubeMesh.renderOrder = 101;
+                innerTubeMesh.userData.type = 'inner'; // 添加类型标记
+              
+                // 端环（随长度自然靠拢，直到重合）
+                const ringSegments = 64;
+                const ringMat = new THREE.LineBasicMaterial({
+                  color: 0xd6b2ff, 
+                  transparent: true, 
+                  opacity: 0.8,  // Increased opacity
+                  depthWrite: false,
+                  linewidth: 2  // Wider lines (Note: may not work on all platforms)
+                });
+              
+                const makeEndCap = (t) => {
+                  const pos = this.trajectoryCurve.getPoint(t);
+                  const tan = this.trajectoryCurve.getTangent(t);
+                  const up  = new THREE.Vector3(0,1,0);
+                  const bin = new THREE.Vector3().crossVectors(tan, up).normalize();
+                  const nor = new THREE.Vector3().crossVectors(bin, tan).normalize();
+              
+                  const capGroup = new THREE.Group();
+              
+                  const mkRing = (r) => {
+                    const pts = [];
+                    for (let i = 0; i <= ringSegments; i++) {
+                      const ang = (i / ringSegments) * Math.PI * 2;
+                      const x = Math.cos(ang) * r;
+                      const y = Math.sin(ang) * r;
+                      pts.push(pos.clone().addScaledVector(bin, x).addScaledVector(nor, y));
+                    }
+                    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                    return new THREE.Line(geo, ringMat.clone());
+                  };
+              
+                  const outerLine = mkRing(1.2);  // Match outer radius
+                  const innerLine = mkRing(0.85);  // Match inner radius
+              
+                  const spokeCount = 8;
+                  for (let i = 0; i < spokeCount; i++) {
+                    const ang = (i / spokeCount) * Math.PI * 2;
+                    const x1 = Math.cos(ang) * 0.85;  // Inner radius
+                    const y1 = Math.sin(ang) * 0.85;
+                    const x2 = Math.cos(ang) * 1.2;   // Outer radius
+                    const y2 = Math.sin(ang) * 1.2;
+                    const spokePts = [
+                      pos.clone().addScaledVector(bin, x1).addScaledVector(nor, y1),
+                      pos.clone().addScaledVector(bin, x2).addScaledVector(nor, y2)
+                    ];
+                    const spokeGeo = new THREE.BufferGeometry().setFromPoints(spokePts);
+                    const spokeLine = new THREE.Line(spokeGeo, ringMat.clone());
+                    spokeLine.renderOrder = 103;
+                    capGroup.add(spokeLine);
+                  }
+              
+                  outerLine.renderOrder = 103;
+                  innerLine.renderOrder = 103;
+                  capGroup.add(outerLine);
+                  capGroup.add(innerLine);
+                  return capGroup;
+                };
+              
+                const frontCap = makeEndCap(startT);
+                const backCap  = makeEndCap(endT);
+              
+                this.cylinder = new THREE.Group();
+                this.cylinder.add(outerTubeMesh);
+                this.cylinder.add(innerTubeMesh);
+                this.cylinder.add(frontCap);
+                this.cylinder.add(backCap);
+                this.group.add(this.cylinder);
+              
+                // 不再依赖渐隐：固定为 1，保证 updateIntensity 正常工作
+                this.currentFadeAlpha = 1.0;
+              
+                // 吸收 & 输出逻辑沿用
+                this.checkNoisyPointAbsorption();
+                if (position > this.windowSize) {
+                  this.generateOutputParticles();
+                }
+            }
+            
+            checkNoisyPointAbsorption() {
+                // Don't absorb points if we're faded out
+                if (this.currentFadeAlpha <= 0.1) return;
+                
+                const windowStart = this.position - this.windowSize / 2;
+                const windowEnd = this.position + this.windowSize / 2;
+                const leadDistance = 0.04; // Start absorbing slightly before entering window
+                
+                this.noisyPoints.forEach((point, index) => {
+                    const pointT = point.userData.t;
+                    
+                    // Check if point is approaching or within the transformer window
+                    if (pointT >= windowStart - leadDistance && pointT <= windowEnd + 0.01 && 
+                        point.visible && !point.userData.absorbed && !point.userData.beingAbsorbed) {
+                        
+                        // Mark as being absorbed and start animation
+                        point.userData.beingAbsorbed = true;
+                        const trajectoryPos = this.trajectoryCurve.getPoint(pointT);
+                        this.animateAbsorption(point, trajectoryPos, pointT);
+                    }
+                });
+            }
+            
+            animateAbsorption(noisyPoint, targetPos, pointT) {
+                // Find an available particle
+                const particle = this.absorbedPoints.find(p => !p.visible);
+                if (!particle) {
+                    return;
+                }
+                
+                // Copy position and material properties from the noisy point
+                particle.position.copy(noisyPoint.position);
+                particle.visible = true;
+                particle.material.opacity = 1.0; // Full opacity
+                particle.material.color.setHex(0xef4444); // Reset to red
+                particle.material.emissive.setHex(0xef4444);
+                particle.material.emissiveIntensity = 2.5;  // Even stronger initial glow
+                particle.scale.setScalar(1.3); // Start larger
+                particle.material.depthWrite = false;
+                particle.material.depthTest = true;
+                
+                // Create an animation object
+                const animation = {
+                    particle: particle,
+                    noisyPoint: noisyPoint,
+                    startPos: noisyPoint.position.clone(),
+                    targetPos: targetPos.clone(),
+                    pointT: pointT,
+                    progress: 0,
+                    active: true,
+                    phase: 'pulling' // 'pulling' or 'following'
+                };
+                
+                this.absorptionAnimations.push(animation);
+                
+                // Hide the original noisy point immediately
+                noisyPoint.visible = false;
+                
+                // Create spark effect at absorption point
+                this.createAbsorptionSparks(noisyPoint.position, targetPos);
+            }
+
+            createAbsorptionSparks(startPos, targetPos) {
+                const sparkCount = 3;
+                for (let i = 0; i < sparkCount; i++) {
+                  const spark = this.sparkParticles.find(p => !p.visible);
+                  if (!spark) continue;
+              
+                  spark.position.copy(startPos);
+                  spark.visible = true;
+                  spark.material.color.setHex(0xff6666);     // 亮红
+                  spark.material.emissive.setHex(0xff6666);
+                  spark.material.emissiveIntensity = 3.0;  // Stronger spark glow
+                  spark.material.opacity = 1;
+                  spark.scale.setScalar(0.25);  // Larger sparks to match scale
+              
+                  // 随机方向与速度
+                  const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.5;
+                  const speed = 0.1 + Math.random() * 0.05;
+                  const velocity = new THREE.Vector3(
+                    Math.cos(angle) * speed,
+                    Math.random() * 0.1,
+                    Math.sin(angle) * speed
+                  );
+              
+                  const animateSpark = () => {
+                    if (!spark.visible) return;
+              
+                    spark.position.add(velocity);
+                    velocity.multiplyScalar(0.95); // 减速
+                    spark.material.opacity *= 0.92;
+                    spark.scale.multiplyScalar(0.96);
+              
+                    // 逐步向紫色过渡
+                    const currentColor = spark.material.color;
+                    const purpleColor = new THREE.Color(0xa855f7);
+                    currentColor.lerp(purpleColor, 0.1);
+                    spark.material.emissive.copy(currentColor);
+              
+                    if (spark.material.opacity > 0.01) {
+                      requestAnimationFrame(animateSpark);
+                    } else {
+                      spark.visible = false;
+                    }
+                  };
+              
+                  animateSpark();
+                }
+              }
+              
+            
+            updateAbsorptionAnimations() {
+                // Update all active absorption animations
+                this.absorptionAnimations = this.absorptionAnimations.filter(anim => {
+                    if (!anim.active) return false;
+                    
+                    if (anim.phase === 'pulling') {
+                        // Phase 1: Pull the particle towards the trajectory
+                        anim.progress += 0.04; // Slower for more visible effect
+                        
+                        // Interpolate position with easing
+                        const t = this.easeInOutQuad(Math.min(anim.progress, 1));
+                        anim.particle.position.lerpVectors(anim.startPos, anim.targetPos, t);
+                        
+                        // Scale down as it approaches
+                        anim.particle.scale.setScalar(0.4 * (1 - t * 0.3));  // Adjusted for larger particles
+                        
+                        // Change color from red to purple during absorption
+                        const purpleColor = new THREE.Color(0xa855f7);
+                        anim.particle.material.color.lerp(purpleColor, t * 0.5);
+                        anim.particle.material.emissive.lerp(purpleColor, t * 0.5);
+                        anim.particle.material.emissiveIntensity = 1.0 + t * 0.5;  // Maintain strong glow
+                        
+                        // When reached the trajectory, switch to following phase
+                        if (anim.progress >= 1) {
+                            anim.phase = 'following';
+                            anim.progress = 0;
+                        }
+                    } else if (anim.phase === 'following') {
+                        // Phase 2: Follow along the trajectory inside the transformer
+                        const currentPos = this.trajectoryCurve.getPoint(anim.pointT);
+                        anim.particle.position.copy(currentPos);
+                        
+                        // Fade out as it moves through the transformer
+                        anim.progress += 0.015; // Slower fade out
+                        anim.particle.material.opacity = 0.8 * (1 - anim.progress);
+                        anim.particle.scale.setScalar(0.3 * (1 - anim.progress * 0.5));  // Adjusted scale
+                        
+                        // Continue changing to purple
+                        const purpleColor = new THREE.Color(0xa855f7);
+                        anim.particle.material.color.lerp(purpleColor, 0.1);
+                        anim.particle.material.emissive.lerp(purpleColor, 0.1);
+                        
+                        // When faded out, end the animation
+                        if (anim.progress >= 1 || anim.particle.material.opacity < 0.01) {
+                            anim.particle.visible = false;
+                            anim.noisyPoint.userData.absorbed = true;
+                            anim.active = false;
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            easeInOutQuad(t) {
+                // More dramatic easing for better visual effect
+                if (t < 0.5) {
+                    return 2 * t * t;
+                } else {
+                    return 1 - Math.pow(-2 * t + 2, 3) / 2;
+                }
+            }
+            
+            generateOutputParticles() {
+                // Don't generate particles if we're faded out or near the end
+                if (this.currentFadeAlpha <= 0.1 || this.position > 0.95) return;
+                
+                if (Math.random() < 0.05) { // 5% chance per frame
+                    const particle = this.outputParticles.find(p => !p.visible);
+                    if (!particle) return;
+                    
+                    // Start from the end of the cylinder
+                    const endT = Math.min(1, this.position + this.windowSize / 2);
+                    const endPos = this.trajectoryCurve.getPoint(endT);
+                    particle.position.copy(endPos);
+                    particle.visible = true;
+                    particle.material.opacity = 1;
+                    particle.scale.setScalar(0.35);  // Slightly larger to match overall scale
+                    
+                    // Move along the refined trajectory
+                    const startT = endT;
+                    
+                    const animateOutput = () => {
+                        if (!particle.visible) return;
+                        
+                        // Move along trajectory
+                        const t = startT - (this.position - startT) * 0.02;
+                        if (t > 0 && t < 1) {
+                            const point = this.trajectoryCurve.getPoint(t);
+                            particle.position.copy(point);
+                        }
+                        
+                        // Fade out over time
+                        particle.material.opacity *= 0.98;
+                        particle.scale.multiplyScalar(1.01);
+                        
+                        if (particle.material.opacity > 0.01) {
+                            requestAnimationFrame(animateOutput);
+                        } else {
+                            particle.visible = false;
+                        }
+                    };
+                    
+                    animateOutput();
+                }
+            }
+            
+            animate(time) {
+                // Update all absorption animations
+                this.updateAbsorptionAnimations();
+            }
+            
+            updateIntensity(intensity) {
+                if (!this.cylinder) return;
+                
+                // t = 0 表示高亮紫；t = 1 表示完全"白化"
+                const t = 1 - THREE.MathUtils.clamp(intensity, 0, 1);
+                const outerBase = this.colors.outer;
+                const innerBase = this.colors.inner;
+                const ringBase  = this.colors.ring;
+                const white     = this.colors.white;
+                
+                this.cylinder.children.forEach(child => {
+                    // 外/内管 Mesh
+                    if (child.isMesh && child.material) {
+                        const typ = child.userData.type;
+                        if (typ === 'outer' || typ === 'inner') {
+                            const base = (typ === 'outer') ? outerBase : innerBase;
+                            const col  = base.clone().lerp(white, t);
+                            child.material.color.copy(col);
+                            child.material.emissive.copy(col);
+                            
+                            // 透明度和发光随强度线性映射：保持最低可见度，避免"消失"
+                            const baseOpacity = (typ === 'outer') ? 0.6 : 0.4;  // Updated base values
+                            const minOpacity  = 0.15; // 最低
+                            const op = THREE.MathUtils.lerp(minOpacity, baseOpacity, intensity);
+                            child.material.opacity = op;
+                            
+                            const baseEm = (typ === 'outer') ? 0.8 : 0.4;  // Updated emission values
+                            const emMin  = 0.1;
+                            child.material.emissiveIntensity = THREE.MathUtils.lerp(emMin, baseEm, intensity);
+                        }
+                    }
+                    // 端面环（Line）
+                    else if (child.isGroup) {
+                        child.children.forEach(line => {
+                            if (line.isLine && line.material) {
+                                const col = ringBase.clone().lerp(white, t);
+                                line.material.color.copy(col);
+                                
+                                const baseOpacity = 0.8;  // Increased ring visibility
+                                const minOpacity  = 0.2;
+                                line.material.opacity = THREE.MathUtils.lerp(minOpacity, baseOpacity, intensity);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            reset() {
+                // Reset all noisy points
+                this.noisyPoints.forEach(point => {
+                    point.userData.absorbed = false;
+                    point.userData.beingAbsorbed = false;
+                    point.visible = true;
+                    point.material.opacity = point.userData.originalOpacity;
+                });
+                
+                // Clear all animations
+                this.absorptionAnimations.forEach(anim => {
+                    if (anim.particle) {
+                        anim.particle.visible = false;
+                    }
+                });
+                this.absorptionAnimations = [];
+                
+                // Hide all absorbed particles
+                this.absorbedPoints.forEach(particle => {
+                    particle.visible = false;
+                });
+            }
+        }
+
+        // ========== Main Scene Setup ==========
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050508);
+        scene.fog = new THREE.Fog(0x050508, 50, 150);
+
+        
+        const container = document.getElementById('canvas-container');
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+        camera.position.set(35, 45, 45);
+        camera.lookAt(0, 10, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true, 
+            alpha: true,
+            logarithmicDepthBuffer: true // Better depth precision
+        });
+        renderer.setSize(width, height);
+        renderer.shadowMap.enabled = false; // Disable shadows completely
+        renderer.sortObjects = true; // Ensure proper sorting
+        
+        // Add tone mapping for better color rendering
+        // renderer.outputEncoding = THREE.sRGBEncoding;
+        // renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        // renderer.toneMappingExposure = 1.3;  // Increased exposure for physically correct lighting
+        renderer.physicallyCorrectLights = true;
+        
+        container.appendChild(renderer.domElement);
+        
+        // Lighting with enhanced glow support
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);  // Increased for physically correct lighting
+        scene.add(ambientLight);
+
+        const hemi = new THREE.HemisphereLight(0x1d2333, 0x090909, 0.3); // Doubled intensity
+        scene.add(hemi);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);  // Much higher for physical correctness
+        directionalLight.position.set(20, 40, 20);
+        directionalLight.target.position.set(0, 10, 0);
+        directionalLight.castShadow = false; // Disable shadows to avoid artifacts
+        scene.add(directionalLight);
+        scene.add(directionalLight.target);
+        
+        // Purple glow light for transformer
+        const pointLight = new THREE.PointLight(0xa855f7, 25, 80, 2);  // Much higher intensity, add decay
+        pointLight.position.set(-15, 25, -15);
+        scene.add(pointLight);
+        
+        // Green glow light for trajectory
+        const pointLight2 = new THREE.PointLight(0x10b981, 20, 60, 2);  // Higher intensity with decay
+        pointLight2.position.set(10, 20, 10);
+        scene.add(pointLight2);
+        
+        // Blue glow light for manifold
+        const pointLight3 = new THREE.PointLight(0x3b82f6, 15, 70, 2);
+        pointLight3.position.set(0, 30, 0);
+        scene.add(pointLight3);
+        
+        // Red glow light for noisy points
+        const pointLight4 = new THREE.PointLight(0xef4444, 12, 50, 2);
+        pointLight4.position.set(20, 15, -10);
+        scene.add(pointLight4);
+        
+        // Create pose manifold surface with correct orientation
+        const manifoldGeometry = new THREE.PlaneGeometry(50, 50, 60, 60);
+        // CRITICAL FIX: Rotate plane to lie in XZ plane
+        manifoldGeometry.rotateX(-Math.PI / 2);
+        
+        // A. Base layer (receives light, normal blending)
+        const manifoldBaseMaterial = new THREE.MeshPhongMaterial({
+            color: 0x3b82f6,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.35,  // Reduced for better transparency
+            emissive: 0x3b82f6,
+            emissiveIntensity: 0.4,
+            depthWrite: false,  // Allow transparency to work properly
+            blending: THREE.NormalBlending,
+            shininess: 150
+        });
+        
+        // Deform the plane properly
+        const positionAttribute = manifoldGeometry.attributes.position;
+        for (let i = 0; i < positionAttribute.count; i++) {
+            const x = positionAttribute.getX(i);
+            const z = positionAttribute.getZ(i);
+            
+            // Calculate Y based on X and Z coordinates
+            const y = Math.sin(x * 0.15) * 4 + 
+                     Math.cos(z * 0.15) * 3 + 
+                     Math.sin(x * z * 0.01) * 2 + 10;
+            
+            // Only modify Y coordinate
+            positionAttribute.setY(i, y);
+        }
+        manifoldGeometry.computeVertexNormals();
+        
+        const manifoldBase = new THREE.Mesh(manifoldGeometry, manifoldBaseMaterial);
+        manifoldBase.receiveShadow = false;
+        manifoldBase.castShadow = false;
+        manifoldBase.renderOrder = 4;
+        scene.add(manifoldBase);
+        
+        // B. Glow layer (additive blending)
+        const manifoldGlowMaterial = new THREE.MeshBasicMaterial({
+            color: 0x6fb1ff,
+            transparent: true,
+            opacity: 0.15,  // Reduced for subtler glow
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const manifoldGlow = new THREE.Mesh(manifoldGeometry.clone(), manifoldGlowMaterial);
+        manifoldGlow.renderOrder = 5;
+        scene.add(manifoldGlow);
+        
+        // C. Edge outline with proper settings
+        const edgeGeometry = new THREE.EdgesGeometry(manifoldGeometry);
+        const edgeMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x60a5fa, 
+            transparent: true, 
+            opacity: 0.5,  // Reduced for better transparency
+            depthWrite: false,
+            fog: false  // Disable fog on edges
+        });
+        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        edges.castShadow = false;
+        edges.receiveShadow = false;
+        edges.renderOrder = 6; // Render after manifold layers
+        scene.add(edges);
+        
+        // Add grid
+        const gridHelper = new THREE.GridHelper(60, 24, 0x2563eb, 0x1e40af);  // Slightly brighter blue
+        gridHelper.position.y = 0;
+        gridHelper.material.opacity = 0.2;  // Slightly more visible
+        gridHelper.material.transparent = true;
+        gridHelper.material.depthWrite = false;
+        gridHelper.renderOrder = -10; // Render before everything else
+        scene.add(gridHelper);
+        
+        // Create the refined trajectory path
+        const trajectoryPoints = [];
+        const numPoints = 250;
+        
+        for (let i = 0; i <= numPoints; i++) {
+            const t = i / numPoints;
+            const angle = t * Math.PI * 3.5;
+            const radius = 15 * (1 - t * 0.4);
+            
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            const y = Math.sin(x * 0.15) * 4 + 
+                     Math.cos(z * 0.15) * 3 + 
+                     Math.sin(x * z * 0.01) * 2 + 10.1;
+            
+            trajectoryPoints.push(new THREE.Vector3(x, y, z));
+        }
+        
+        const trajectoryCurve = new THREE.CatmullRomCurve3(trajectoryPoints);
+        
+        // Create segmented trajectory with enhanced glow
+        const trajectorySegments = [];
+        const segmentMaterials = [];
+        const numSegments = 1000;
+        
+        for (let i = 0; i < numSegments; i++) {
+            const t1 = i / numSegments;
+            const t2 = (i + 1) / numSegments;
+            
+            const segmentPoints = [];
+            for (let j = 0; j <= 10; j++) {
+                const t = t1 + (t2 - t1) * (j / 10);
+                segmentPoints.push(trajectoryCurve.getPoint(t));
+            }
+            
+            const segmentCurve = new THREE.CatmullRomCurve3(segmentPoints);
+            const segmentGeometry = new THREE.TubeGeometry(segmentCurve, 10, 0.3, 16, false);
+            
+            const segmentMaterial = new THREE.MeshPhongMaterial({
+                color: 0x10b981,  // Brighter green
+                emissive: 0x10b981,
+                emissiveIntensity: 0.8,  // Increased for more glow
+                transparent: true,
+                opacity: 0.7,  // Increased opacity
+                depthWrite: true,
+                shininess: 150  // Added shininess
+            });
+            
+            const segmentMesh = new THREE.Mesh(segmentGeometry, segmentMaterial);
+            segmentMesh.castShadow = false;
+            segmentMesh.receiveShadow = false;
+            segmentMesh.visible = false;
+            segmentMesh.renderOrder = 10; // Render early
+            scene.add(segmentMesh);
+            
+            trajectorySegments.push(segmentMesh);
+            segmentMaterials.push(segmentMaterial);
+        }
+        
+        // Create noisy pose scatter points
+        const scatterGroup = new THREE.Group();
+        const sphereGeometry = new THREE.SphereGeometry(0.5, 20, 20);  // Slightly larger and smoother
+        const noisyMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xef4444,
+            emissive: 0xef4444,
+            emissiveIntensity: 1.2,  // Increased for physical lighting
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: true,
+            shininess: 150
+        });
+        
+        const numNoisyPoints = 100;
+        const noisyPoints = [];
+        for (let i = 0; i < numNoisyPoints; i++) {
+            const t = i / (numNoisyPoints - 1);
+            const basePoint = trajectoryCurve.getPoint(t);
+            
+            const noiseScale = 2;
+            const noiseX = (Math.random() - 0.5) * noiseScale;
+            const noiseY = (Math.random() - 0.5) * noiseScale * 1.5;
+            const noiseZ = (Math.random() - 0.5) * noiseScale;
+            
+            const point = new THREE.Mesh(sphereGeometry, noisyMaterial.clone());
+            point.material.transparent = true;
+            point.material.opacity = 0.9;  // Match new default
+            point.position.set(
+                basePoint.x + noiseX,
+                basePoint.y + noiseY,
+                basePoint.z + noiseZ
+            );
+            point.castShadow = false; // Don't cast shadows
+            point.receiveShadow = false;
+            point.renderOrder = 50; // Render after trajectory
+            point.userData = { 
+                basePoint: basePoint.clone(),
+                t: t,
+                noise: new THREE.Vector3(noiseX, noiseY, noiseZ),
+                absorbed: false,
+                beingAbsorbed: false,
+                originalOpacity: 0.9  // Match new default
+            };
+            scatterGroup.add(point);
+            noisyPoints.push(point);
+        }
+        scatterGroup.renderOrder = 50; // Ensure group render order
+        scene.add(scatterGroup);
+        
+        // Create key points with enhanced glow
+        const keyPointsGroup = new THREE.Group();
+        const keyPointMaterial = new THREE.MeshPhongMaterial({
+            color: 0x10b981,  // Brighter green matching trajectory
+            emissive: 0x10b981,
+            emissiveIntensity: 1.2,  // Strong glow for key points
+            transparent: true,
+            opacity: 0.8,  // Higher opacity
+            depthWrite: true,
+            shininess: 200  // High shininess
+        });
+        
+        for (let i = 0; i < 10; i++) {
+            const t = i / 9;
+            const point = trajectoryCurve.getPoint(t);
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.5, 24, 24),  // Slightly larger and smoother
+                keyPointMaterial.clone()
+            );
+            sphere.material.transparent = true;
+            sphere.material.opacity = 0.8;
+            sphere.position.copy(point);
+            sphere.userData.t = t;
+            sphere.visible = false; // Initially hidden
+            sphere.castShadow = false;
+            sphere.receiveShadow = false;
+            sphere.renderOrder = 30; // Render after trajectory
+            keyPointsGroup.add(sphere);
+        }
+        keyPointsGroup.renderOrder = 30; // Ensure group render order
+        scene.add(keyPointsGroup);
+        
+        // ========== Create Transformer Pipeline ==========
+        const transformerPipeline = new TransformerPipeline(scene, trajectoryCurve, noisyPoints);
+        
+        // Initially hide all trajectory segments and key points since animation auto-starts
+        trajectorySegments.forEach(seg => {
+            seg.visible = false;
+        });
+        keyPointsGroup.children.forEach(sphere => {
+            sphere.visible = false;
+        });
+        
+        // Animation variables
+        let isPlaying = true;  // Auto-start animation
+        let wavePosition = 0;
+        let waveStartTime = performance.now();  // Start immediately
+        const waveSpeed = 0.0035;  // Adjusted for larger window
+        const gap = 0.12;  // Slightly longer gap
+        const cycleLen = 1 + gap;
+        
+        // Update processing status
+        function updateProcessingStatus(wavePosition, isPlaying) {
+            const stage = document.getElementById('processing-stage');
+            const rate = document.getElementById('processing-rate');
+            const fill = document.getElementById('processing-fill');
+            
+            if (isPlaying) {
+                const effectivePosition = Math.min(wavePosition / 1, 1);  // Cap at 100%
+                stage.textContent = wavePosition > 1 ? 'Resetting' : 'Refining';
+                rate.textContent = wavePosition > 1 ? 'Preparing...' : `${Math.round(effectivePosition * 100)}%`;
+                fill.style.width = `${effectivePosition * 100}%`;
+            } else {
+                stage.textContent = 'Paused';
+                rate.textContent = `${Math.round(Math.min(wavePosition, 1) * 100)}%`;
+                fill.style.width = `${Math.min(wavePosition, 1) * 100}%`;
+            }
+        }
+        
+        // Interactive rotation
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let autoRotation = true;  // Enable auto-rotation initially
+        
+        const initialRotation = {
+            x: -Math.PI / 10,
+            y: Math.PI / 4
+        };
+        
+        scene.rotation.x = initialRotation.x;
+        scene.rotation.y = initialRotation.y;
+        
+        renderer.domElement.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            autoRotation = false;  // Stop auto-rotation on user interaction
+            previousMousePosition = {
+                x: e.clientX,
+                y: e.clientY
+            };
+        });
+        
+        renderer.domElement.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            
+            const deltaMove = {
+                x: e.clientX - previousMousePosition.x,
+                y: e.clientY - previousMousePosition.y
+            };
+            
+            scene.rotation.y += deltaMove.x * 0.01;
+            scene.rotation.x += deltaMove.y * 0.01;
+            scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+            
+            previousMousePosition = {
+                x: e.clientX,
+                y: e.clientY
+            };
+        });
+        
+        renderer.domElement.addEventListener('mouseup', function(e) {
+            isDragging = false;
+        });
+        
+        renderer.domElement.addEventListener('mouseleave', function(e) {
+            isDragging = false;
+        });
+        
+        // Touch events
+        let touchStart = null;
+        
+        renderer.domElement.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                autoRotation = false;  // Stop auto-rotation on user interaction
+                touchStart = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+                previousMousePosition = touchStart;
+            }
+        });
+        
+        renderer.domElement.addEventListener('touchmove', function(e) {
+            if (!isDragging || !touchStart) return;
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            const deltaMove = {
+                x: touch.clientX - previousMousePosition.x,
+                y: touch.clientY - previousMousePosition.y
+            };
+            
+            scene.rotation.y += deltaMove.x * 0.01;
+            scene.rotation.x += deltaMove.y * 0.01;
+            scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+            
+            previousMousePosition = {
+                x: touch.clientX,
+                y: touch.clientY
+            };
+        });
+        
+        // Space key to pause/play
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    waveStartTime = performance.now() - (wavePosition * 1000 / waveSpeed);
+                }
+            }
+        });
+        
+        // Label interactions
+        const noisyLabel = document.getElementById('noisy-label');
+        const manifoldLabel = document.getElementById('manifold-label');
+        const trajectoryLabel = document.getElementById('trajectory-label');
+        const transformerLabel = document.getElementById('transformer-label');
+        
+        const originalMaterials = {
+            manifoldBase: manifoldBaseMaterial,
+            manifoldGlow: manifoldGlowMaterial,
+            edges: edgeMaterial,
+            gridOpacity: 0.2
+        };
+        
+        const animationStates = {
+            manifold: { current: 1, target: 1 },
+            noisy: { current: 1, target: 1 },
+            trajectory: { current: 1, target: 1 },
+            transformer: { current: 1, target: 1 },
+            grid: { current: 0.2, target: 0.2 }  // Updated default grid opacity
+        };
+        
+        const animationSpeed = 0.15;
+        
+        function lerp(current, target, speed) {
+            return current + (target - current) * speed;
+        }
+        
+        function lerpColor(color, targetHex, factor) {
+            const targetColor = new THREE.Color(targetHex);
+            color.lerp(targetColor, factor);
+        }
+        
+        function restoreAllMaterials() {
+            animationStates.manifold.target = 1;
+            animationStates.noisy.target = 1;
+            animationStates.trajectory.target = 1;
+            animationStates.transformer.target = 1;
+            animationStates.grid.target = 0.2;  // Updated default
+        }
+        
+        function greyOutComponents(except) {
+            animationStates.manifold.target = except === 'manifold' ? 1 : 0;
+            animationStates.noisy.target = except === 'noisy' ? 1 : 0;
+            animationStates.trajectory.target = except === 'trajectory' ? 1 : 0;
+            animationStates.transformer.target = except === 'transformer' ? 1 : 0;
+            animationStates.grid.target = 0.05;
+        }
+        
+        noisyLabel.addEventListener('mouseenter', () => {
+            noisyLabel.classList.add('active');
+            greyOutComponents('noisy');
+        });
+        
+        noisyLabel.addEventListener('mouseleave', () => {
+            noisyLabel.classList.remove('active');
+            restoreAllMaterials();
+        });
+        
+        noisyLabel.addEventListener('click', () => {
+            modal.open(modalContents.noisy.title, modalContents.noisy.content, modalContents.noisy.theme);
+        });
+        
+        manifoldLabel.addEventListener('mouseenter', () => {
+            manifoldLabel.classList.add('active');
+            greyOutComponents('manifold');
+        });
+        
+        manifoldLabel.addEventListener('mouseleave', () => {
+            manifoldLabel.classList.remove('active');
+            restoreAllMaterials();
+        });
+        
+        manifoldLabel.addEventListener('click', () => {
+            modal.open(modalContents.manifold.title, modalContents.manifold.content, modalContents.manifold.theme);
+        });
+        
+        trajectoryLabel.addEventListener('mouseenter', () => {
+            trajectoryLabel.classList.add('active');
+            greyOutComponents('trajectory');
+        });
+        
+        trajectoryLabel.addEventListener('mouseleave', () => {
+            trajectoryLabel.classList.remove('active');
+            restoreAllMaterials();
+        });
+        
+        trajectoryLabel.addEventListener('click', () => {
+            modal.open(modalContents.trajectory.title, modalContents.trajectory.content, modalContents.trajectory.theme);
+        });
+        
+        transformerLabel.addEventListener('mouseenter', () => {
+            transformerLabel.classList.add('active');
+            greyOutComponents('transformer');
+            if (transformerPipeline) {
+                transformerPipeline.updateIntensity(1);
+            }
+        });
+        
+        transformerLabel.addEventListener('mouseleave', () => {
+            transformerLabel.classList.remove('active');
+            restoreAllMaterials();
+            if (transformerPipeline) {
+                transformerPipeline.updateIntensity(0.5);
+            }
+        });
+        
+        transformerLabel.addEventListener('click', () => {
+            modal.open(modalContents.transformer.title, modalContents.transformer.content, modalContents.transformer.theme);
+        });
+        
+        // Animation loop
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            
+            // Update animation states
+            animationStates.manifold.current = lerp(animationStates.manifold.current, animationStates.manifold.target, animationSpeed);
+            animationStates.noisy.current = lerp(animationStates.noisy.current, animationStates.noisy.target, animationSpeed);
+            animationStates.trajectory.current = lerp(animationStates.trajectory.current, animationStates.trajectory.target, animationSpeed);
+            animationStates.transformer.current = lerp(animationStates.transformer.current, animationStates.transformer.target, animationSpeed);
+            animationStates.grid.current = lerp(animationStates.grid.current, animationStates.grid.target, animationSpeed);
+            
+            // Apply manifold dimming
+            const manifoldFactor = animationStates.manifold.current;
+            
+            // Base layer
+            lerpColor(manifoldBase.material.color, manifoldFactor > 0.5 ? 0x3b82f6 : 0xffffff, animationSpeed);
+            lerpColor(manifoldBase.material.emissive, manifoldFactor > 0.5 ? 0x3b82f6 : 0xffffff, animationSpeed);
+            manifoldBase.material.emissiveIntensity = lerp(manifoldBase.material.emissiveIntensity, manifoldFactor > 0.5 ? 0.4 : 0.1, animationSpeed);
+            manifoldBase.material.opacity = lerp(manifoldBase.material.opacity, manifoldFactor > 0.5 ? 0.35 : 0.15, animationSpeed);
+            
+            // Glow layer
+            lerpColor(manifoldGlow.material.color, manifoldFactor > 0.5 ? 0x6fb1ff : 0xffffff, animationSpeed);
+            manifoldGlow.material.opacity = lerp(manifoldGlow.material.opacity, manifoldFactor > 0.5 ? 0.15 : 0.05, animationSpeed);
+            
+            // Edges
+            lerpColor(edges.material.color, manifoldFactor > 0.5 ? 0x60a5fa : 0xffffff, animationSpeed);
+            edges.material.opacity = lerp(edges.material.opacity, manifoldFactor > 0.5 ? 0.5 : 0.15, animationSpeed);
+            
+            // Apply noisy points dimming
+            const noisyFactor = animationStates.noisy.current;
+            scatterGroup.children.forEach(point => {
+                if (!point.userData.absorbed && !point.userData.beingAbsorbed) {
+                    lerpColor(point.material.color, noisyFactor > 0.5 ? 0xef4444 : 0xffffff, animationSpeed);
+                    lerpColor(point.material.emissive, noisyFactor > 0.5 ? 0xef4444 : 0xffffff, animationSpeed);
+                    point.material.emissiveIntensity = lerp(point.material.emissiveIntensity, noisyFactor > 0.5 ? 0.8 : 0.1, animationSpeed);
+                    const targetOpacity = noisyFactor > 0.5 ? 0.9 : 0.4;
+                    point.material.opacity = lerp(point.material.opacity, targetOpacity, animationSpeed);
+                }
+            });
+            
+            // Apply trajectory dimming
+            const trajectoryFactor = animationStates.trajectory.current;
+            
+            // Update trajectory segments visibility based on transformer position
+            trajectorySegments.forEach((seg, i) => {
+                const segT = (i + 0.5) / numSegments;
+                
+                // Only show segments behind the transformer
+                if (segT < wavePosition - transformerPipeline.windowSize / 2) {
+                    seg.visible = true;
+                    const mat = segmentMaterials[i];
+                    lerpColor(mat.color, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                    lerpColor(mat.emissive, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                    mat.opacity = lerp(mat.opacity, trajectoryFactor > 0.5 ? 0.7 : 0.2, animationSpeed);
+                    mat.emissiveIntensity = lerp(mat.emissiveIntensity, trajectoryFactor > 0.5 ? 0.8 : 0.15, animationSpeed);
+                } else {
+                    seg.visible = false;
+                }
+            });
+            
+            // Update key points visibility based on transformer position
+            keyPointsGroup.children.forEach((sphere, i) => {
+                const sphereT = sphere.userData.t;
+                
+                // Only show key points behind the transformer
+                if (sphereT < wavePosition - transformerPipeline.windowSize / 2) {
+                    sphere.visible = true;
+                    lerpColor(sphere.material.color, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                    lerpColor(sphere.material.emissive, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                    sphere.material.emissiveIntensity = lerp(sphere.material.emissiveIntensity, trajectoryFactor > 0.5 ? 1.2 : 0.2, animationSpeed);
+                    sphere.material.opacity = lerp(sphere.material.opacity, trajectoryFactor > 0.5 ? 0.8 : 0.3, animationSpeed);
+                    
+                    const scale = 1.2 + Math.sin(time * 3 - i * 0.5) * 0.25 * trajectoryFactor;  // Slightly larger animation
+                    sphere.scale.setScalar(scale);
+                } else {
+                    sphere.visible = false;
+                }
+            });
+            
+            // Apply grid dimming
+            gridHelper.material.opacity = animationStates.grid.current;
+            const gridColorTarget = animationStates.grid.current > 0.1 ? 0x2563eb : 0xffffff;
+            lerpColor(gridHelper.material.color, gridColorTarget, animationSpeed);
+            
+            // Auto-rotation
+            if (autoRotation && isPlaying) {
+                scene.rotation.y += 0.0008;  // Even gentler rotation
+            }
+            
+            // Update wave position
+            if (isPlaying) {
+                wavePosition += waveSpeed;
+                if (wavePosition >= cycleLen) {
+                    wavePosition = 0;
+                    waveStartTime = performance.now();  // Reset start time for new cycle
+                    // Reset everything for next cycle
+                    transformerPipeline.reset();
+                    trajectorySegments.forEach(seg => {
+                        seg.visible = false;
+                    });
+                    keyPointsGroup.children.forEach(sphere => {
+                        sphere.visible = false;
+                    });
+                }
+                
+                // Update transformer pipeline position
+                transformerPipeline.updatePosition(wavePosition);
+            }
+            
+            // Animate noisy points
+            noisyPoints.forEach((point, i) => {
+                const pointT = point.userData.t;
+                // Hide points far ahead of transformer for performance
+                const isAheadOfTransformer = pointT > wavePosition + transformerPipeline.windowSize * 2;
+                
+                if (!point.userData.absorbed && !point.userData.beingAbsorbed && point.visible && !isAheadOfTransformer) {
+                    const jitter = Math.sin(time * 2 + i * 0.3) * 0.08;  // Slightly larger jitter
+                    point.position.y = point.userData.basePoint.y + point.userData.noise.y + jitter;
+                    
+                    // Add subtle pulsing glow
+                    const pulse = 0.8 + Math.sin(time * 3 + i * 0.5) * 0.2;
+                    point.material.emissiveIntensity = pulse;
+                }
+            });
+            
+            // Animate transformer pipeline
+            if (transformerPipeline) {
+                transformerPipeline.animate(time);
+                const intensity = animationStates.transformer.current;
+                transformerPipeline.updateIntensity(intensity);
+            }
+            
+            // Update processing status
+            updateProcessingStatus(wavePosition, isPlaying);
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+            camera.aspect = newWidth / newHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(newWidth, newHeight);
+        });
+        
+        // Hide drag hint after first interaction
+        let dragHintShown = true;
+        function hideDragHint() {
+            if (dragHintShown) {
+                const dragHint = document.querySelector('.drag-hint');
+                if (dragHint) {
+                    dragHint.style.opacity = '0';
+                    setTimeout(() => dragHint.remove(), 500);
+                }
+                dragHintShown = false;
+            }
+        }
+        
+        renderer.domElement.addEventListener('mousedown', hideDragHint);
+        renderer.domElement.addEventListener('touchstart', hideDragHint);
+
+    </script>
+</body>
+</html>
