@@ -657,25 +657,6 @@
             border-radius: 2px;
         }
         
-        /* Drag Hint */
-        .drag-hint {
-            position: fixed;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(20, 20, 30, 0.9);
-            padding: 12px 24px;
-            border-radius: 20px;
-            color: #a0a0b0;
-            font-size: 13px;
-            z-index: 10;
-            pointer-events: none;
-            opacity: 0.8;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            letter-spacing: 0.5px;
-            transition: opacity 0.5s ease;
-        }
         
         /* Computing indicator */
         .computing {
@@ -786,34 +767,33 @@
             .legend {
                 display: none;
             }
-            
-            .drag-hint {
-                display: none;
-            }
         }
 
         /* 持久激活指示 */
         .algo-label.active {
-            border-left-width: 6px;
-            box-shadow: 0 0 0 2px rgba(168,85,247,.25), 0 10px 28px rgba(0,0,0,.45);
-            background: linear-gradient(to right, rgba(168,85,247,.12), rgba(255,255,255,.03));
-            transform: translateX(10px) scale(1.05);
+          border-left-width: 6px;
+          box-shadow: 0 0 0 2px rgba(168,85,247,.25), 0 10px 28px rgba(0,0,0,.45);
+          background: linear-gradient(to right, rgba(168,85,247,.12), rgba(255,255,255,.03));
+          transform: translateX(10px) scale(1.05);
         }
 
-        /* “ACTIVE” 角标 */
-        .algo-label.active::after {
-            content: 'ACTIVE';
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .6px;
-            color: #0b1020;
-            background: #a855f7;
-            padding: 3px 6px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(168,85,247,.35);
+
+        #algo-hpstm.active {
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, .25), 0 10px 28px rgba(0,0,0,.45);
+            background: linear-gradient(to right, rgba(251, 191, 36, .12), rgba(255,255,255,.03));
+        }
+        #algo-hpstm.active::after {
+            background: #fbbf24;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, .35);
+        }
+
+        #algo-gt.active {
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, .25), 0 10px 28px rgba(0,0,0,.45);
+            background: linear-gradient(to right, rgba(16, 185, 129, .12), rgba(255,255,255,.03));
+        }
+        #algo-gt.active::after {
+            background: #10b981;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, .35);
         }
     </style>
 </head>
@@ -3900,18 +3880,6 @@
             appState.renderer.setSize(width, height);
         });
         
-        // Hide drag hint
-        let dragHintShown = true;
-        function hideDragHint() {
-            if (dragHintShown) {
-                const dragHint = document.querySelector('.drag-hint');
-                if (dragHint) {
-                    dragHint.style.opacity = '0';
-                    setTimeout(() => dragHint.remove(), 500);
-                }
-                dragHintShown = false;
-            }
-        }
         
         appState.renderer.domElement.addEventListener('mousedown', hideDragHint);
         appState.renderer.domElement.addEventListener('touchstart', hideDragHint);
