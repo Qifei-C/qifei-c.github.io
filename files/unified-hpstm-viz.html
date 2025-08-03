@@ -791,6 +791,30 @@
                 display: none;
             }
         }
+
+        /* 持久激活指示 */
+        .algo-label.active {
+            border-left-width: 6px;
+            box-shadow: 0 0 0 2px rgba(168,85,247,.25), 0 10px 28px rgba(0,0,0,.45);
+            background: linear-gradient(to right, rgba(168,85,247,.12), rgba(255,255,255,.03));
+            transform: translateX(10px) scale(1.05);
+        }
+
+        /* “ACTIVE” 角标 */
+        .algo-label.active::after {
+            content: 'ACTIVE';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            color: #0b1020;
+            background: #a855f7;
+            padding: 3px 6px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(168,85,247,.35);
+        }
     </style>
 </head>
 <body>
@@ -2180,6 +2204,7 @@
                 
                 appState.comparisonApp = appState.comparisonApp || await initComparisonApp();
                 appState.comparisonApp.resume();
+                appState.comparisonApp.updateAlgoLabelActive?.(appState.comparisonApp.getActiveAlgo?.() || 'HPSTM');
                 
             } else {
                 appState.currentMode = 'mechanism';
@@ -2484,10 +2509,10 @@
             
             // Comparison mode labels
             const comparisonLabels = [
-                { id: 'algo-hpstm', content: 'hpstm' },
-                { id: 'algo-kalman', content: 'kalman' },
-                { id: 'algo-sg', content: 'sg' },
-                { id: 'algo-gt', content: 'gt' }
+                { id:'algo-hpstm', content:'hpstm', algo:'HPSTM' },
+                { id:'algo-kalman', content:'kalman', algo:'Kalman' },
+                { id:'algo-sg',     content:'sg',     algo:'SG'     },
+                { id:'algo-gt',     content:'gt',     algo:'GT'     }
             ];
             
             // Setup mechanism labels
@@ -2536,56 +2561,27 @@
             });
             
             // Setup comparison labels
-            comparisonLabels.forEach(({ id, content }) => {
+            comparisonLabels.forEach(({ id, content, algo }) => {
                 const label = document.getElementById(id);
                 if (!label) return;
-                
-                label.addEventListener(isMobile ? 'click' : 'mouseenter', () => {
+
+                // 悬停：直接设为激活（减少交互成本，且有可视“ACTIVE”角标）
+                label.addEventListener('mouseenter', () => {
                     if (appState.currentMode !== 'comparison') return;
-                    
                     detailCard.cancelDelayedHide();
-                    
-                    // Update active state
-                    comparisonLabels.forEach(l => {
-                        document.getElementById(l.id)?.classList.remove('active');
-                    });
-                    label.classList.add('active');
-                    
                     if (detailCard.isOpen && detailCard.currentTheme !== content) {
-                        detailCard.switchContent(content);
+                    detailCard.switchContent(content);
                     } else if (!detailCard.isOpen) {
-                        detailCard.show(content, 30);
+                    detailCard.show(content, 30);
                     }
-                    
-                    // Handle algorithm selection
-                    if (appState.comparisonApp) {
-                        const algoMap = {
-                            'algo-hpstm': 'HPSTM',
-                            'algo-kalman': 'Kalman',
-                            'algo-sg': 'SG',
-                            'algo-gt': 'GT'
-                        };
-                        
-                        if (algoMap[id]) {
-                            appState.comparisonApp.setAlgorithm(algoMap[id]);
-                        }
-                    }
+                    appState.comparisonApp?.setActiveAlgorithm(algo);
                 });
-                
-                if (!isMobile) {
-                    label.addEventListener('mouseleave', () => {
-                        if (appState.currentMode !== 'comparison') return;
-                        
-                        setTimeout(() => {
-                            const anyHovered = comparisonLabels.some(l => 
-                                document.getElementById(l.id)?.matches(':hover'));
-                            const cardHovered = detailCard.card.matches(':hover');
-                            if (!anyHovered && !cardHovered) {
-                                detailCard.hide(100);
-                            }
-                        }, 20);
-                    });
-                }
+
+                // 点击：同样设为激活（容错，满足“点击也可以设为当前激活”）
+                label.addEventListener('click', () => {
+                    if (appState.currentMode !== 'comparison') return;
+                    appState.comparisonApp?.setActiveAlgorithm(algo);
+                });
             });
             
             // Detail card hover handling
@@ -3268,27 +3264,23 @@
                 T: 150,
                 noiseLevel: 0.5,
                 lambda: 0.01,
-                currentAlgo: 'HPSTM',
+                activeAlgo: 'HPSTM', // 当前激活算法（悬停/点击都会设为它）
                 currentScene: 'spiral',
                 winSize: 32,
-                edgePrior: {
-                    enabled: true,
-                    width: 32,
-                    strength: 0.35,
-                    applyTo: 'HPSTM'
-                }
+                edgePrior: { enabled:true, width:32, strength:0.35, applyTo:'HPSTM' }
             };
+
+            // 四条轨迹的缓存和 Mesh 容器
+            const cached = { HPSTM:null, Kalman:null, SG:null, GT:null };
+            const tubes  = { HPSTM:null, Kalman:null, SG:null, GT:null };
             
             let groundTruth = new Float32Array(config.T * 3);
             let noisyData = new Float32Array(config.T * 3);
-            let refinedData = new Float32Array(config.T * 3);
-            let displayData = new Float32Array(config.T * 3);
             
             let manifoldMesh = null;
             let manifoldWireframe = null;
             let gridHelper = null;
             let noisyPoints = null;
-            let refinedTube = null;
             
             function generateData() {
                 const rng = new SeededRandom(config.seed);
@@ -3328,7 +3320,6 @@
                 }
                 
                 updateManifold();
-                computeRefinedData();
             }
             
             function updateManifold() {
@@ -3405,179 +3396,125 @@
                 scene.add(manifoldWireframe);
             }
             
-            function computeRefinedData() {
-                const computing = document.querySelector('#control-panel .computing');
-                computing.classList.add('active');
-                
-                const sceneConfig = sceneConfigs[config.currentScene];
-                const manifoldFunc = sceneConfig.manifold;
-                
-                setTimeout(() => {
-                    switch (config.currentAlgo) {
-                        case 'GT':
-                            refinedData = new Float32Array(groundTruth);
-                            break;
-                            
-                        case 'SG':
-                            const windowSize = Math.round(5 + config.lambda * 50);
-                            refinedData = savitzkyGolay(noisyData, windowSize, 3);
-                            break;
-                            
-                        case 'Kalman':
-                            refinedData = kalmanFilter(noisyData, 
-                                config.lambda * 2, config.lambda * 0.5);
-                            break;
-                            
-                        case 'HPSTM': {
-                            const W = config.winSize || 32;
-                            const iters = 2;
-                            refinedData = hpstmEdgeEnhanced(
-                                noisyData,
-                                manifoldFunc,
-                                W,
-                                config.lambda * 0.6,
-                                iters,
-                                config.noiseLevel
-                            );
-                            break;
-                        }
-                    }
-                    
-                    displayData = makeDisplayData(
-                        config.currentAlgo,
-                        refinedData,
-                        groundTruth,
-                        manifoldFunc,
-                        config.edgePrior
-                    );
-                    
-                    updateVisualization();
-                    updateMetrics();
-                    computing.classList.remove('active');
-                }, 10);
-            }
-            
-            function updateVisualization() {
-                const manifoldFunc = sceneConfigs[config.currentScene].manifold;
-                displayData = makeDisplayData(
-                    config.currentAlgo,
-                    refinedData,
-                    groundTruth,
-                    manifoldFunc,
-                    config.edgePrior
-                );
-                
-                // Update noisy points
+            function updateNoisyPointsGroup() {
+                // 初始化/更新红色 noisy 点的位置（不依赖当前算法）
                 if (!noisyPoints) {
                     const sphereGeometry = new THREE.SphereGeometry(0.3, 16, 16);
                     noisyPoints = new THREE.Group();
-                    
                     for (let i = 0; i < config.T; i++) {
-                        const material = new THREE.MeshPhongMaterial({
-                            color: 0xef4444,
-                            emissive: 0xef4444,
-                            emissiveIntensity: 0.5
-                        });
-                        const sphere = new THREE.Mesh(sphereGeometry, material);
-                        noisyPoints.add(sphere);
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.5
+                    });
+                    const sphere = new THREE.Mesh(sphereGeometry, material);
+                    noisyPoints.add(sphere);
                     }
                     scene.add(noisyPoints);
                 }
-                
                 for (let i = 0; i < config.T; i++) {
-                    const point = noisyPoints.children[i];
-                    point.position.set(
-                        noisyData[i * 3],
-                        noisyData[i * 3 + 1],
-                        noisyData[i * 3 + 2]
-                    );
+                    const p = noisyPoints.children[i];
+                    p.position.set(noisyData[i*3], noisyData[i*3+1], noisyData[i*3+2]);
                 }
-                
-                // Update refined tube
-                if (refinedTube) {
-                    scene.remove(refinedTube);
-                    refinedTube.geometry.dispose();
-                    refinedTube.material.dispose();
-                }
-                
-                const points = [];
-                for (let i = 0; i < config.T; i++) {
-                    points.push(new THREE.Vector3(
-                        displayData[i * 3],
-                        displayData[i * 3 + 1],
-                        displayData[i * 3 + 2]
-                    ));
-                }
-                
-                const useManifold = (config.currentAlgo === 'HPSTM' || config.currentAlgo === 'GT');
-                const curve = useManifold
-                    ? new ManifoldCurve(points, manifoldFunc)
-                    : new THREE.CatmullRomCurve3(points, false, 'centripetal', 0.0);
-                
-                const tubeGeometry = new THREE.TubeGeometry(curve, 200, 0.6, 16, false);
-                
-                let color = 0xa855f7, emissiveIntensity = 0.3;
-                if (config.currentAlgo === 'GT') { 
-                    color = 0x10b981; 
-                    emissiveIntensity = 0.4; 
-                } else if (config.currentAlgo === 'HPSTM') { 
-                    color = 0xfbbf24; 
-                    emissiveIntensity = 0.5; 
-                }
-                
-                const tubeMaterial = new THREE.MeshPhongMaterial({
-                    color, 
-                    emissive: color, 
-                    emissiveIntensity, 
-                    shininess: 100, 
-                    specular: 0xffffff
-                });
-                
-                refinedTube = new THREE.Mesh(tubeGeometry, tubeMaterial);
-                scene.add(refinedTube);
             }
-            
-            function updateMetrics() {
-                let surfaceDist = 0;
-                let curvatureEnergy = 0;
-                let dataFidelity = 0;
-                
-                const n = config.T;
+
+            function buildOrUpdateTube(algo, displayData, colorHex, emissiveIntensity=0.35) {
+                // 先清旧 mesh
+                if (tubes[algo]) {
+                    scene.remove(tubes[algo]);
+                    tubes[algo].geometry?.dispose();
+                    tubes[algo].material?.dispose();
+                    tubes[algo] = null;
+                }
+                // 生成曲线
                 const sceneConfig = sceneConfigs[config.currentScene];
                 const manifoldFunc = sceneConfig.manifold;
-                
-                for (let i = 0; i < n; i++) {
-                    const x = refinedData[i * 3];
-                    const y = refinedData[i * 3 + 1];
-                    const z = refinedData[i * 3 + 2];
-                    const yManifold = manifoldFunc(x, z);
-                    
-                    surfaceDist += Math.abs(y - yManifold);
-                    
-                    const dx = x - noisyData[i * 3];
-                    const dy = y - noisyData[i * 3 + 1];
-                    const dz = z - noisyData[i * 3 + 2];
-                    dataFidelity += Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    
-                    if (i > 0 && i < n - 1) {
-                        for (let j = 0; j < 3; j++) {
-                            const idx = i * 3 + j;
-                            const d2 = refinedData[idx + 3] - 
-                                       2 * refinedData[idx] + 
-                                       refinedData[idx - 3];
-                            curvatureEnergy += d2 * d2;
-                        }
+                const useManifold = (algo === 'HPSTM' || algo === 'GT');
+                const pts = [];
+                for (let i=0;i<config.T;i++){
+                    pts.push(new THREE.Vector3(
+                    displayData[i*3], displayData[i*3+1], displayData[i*3+2]
+                    ));
+                }
+                const curve = useManifold
+                    ? new ManifoldCurve(pts, manifoldFunc)
+                    : new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.0);
+                const geom = new THREE.TubeGeometry(curve, 200, 0.6, 16, false);
+                const mat  = new THREE.MeshPhongMaterial({
+                    color: colorHex, emissive: colorHex, emissiveIntensity, shininess: 100, specular: 0xffffff
+                });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.visible = (algo === config.activeAlgo); // 只有激活算法可见
+                scene.add(mesh);
+                tubes[algo] = mesh;
+            }
+
+            function computeAllAlgorithmsOnce() {
+                const computing = document.querySelector('#control-panel .computing');
+                computing.classList.add('active');
+
+                const sceneConfig = sceneConfigs[config.currentScene];
+                const manifoldFunc = sceneConfig.manifold;
+
+                setTimeout(() => {
+                    // 1) 基础数据
+                    const GT  = new Float32Array(groundTruth);
+                    const SG_ = savitzkyGolay(noisyData, Math.round(5 + config.lambda * 50), 3);
+                    const KF  = kalmanFilter(noisyData, config.lambda * 2, config.lambda * 0.5);
+                    const HP  = hpstmEdgeEnhanced(
+                    noisyData, manifoldFunc, (config.winSize||32), config.lambda*0.6, 2, config.noiseLevel
+                    );
+
+                    // 2) displayData（含 edgePrior 融合）
+                    const disp = {};
+                    disp.GT     = makeDisplayData('GT',     GT, groundTruth, manifoldFunc, config.edgePrior);
+                    disp.SG     = makeDisplayData('SG',     SG_, groundTruth, manifoldFunc, config.edgePrior);
+                    disp.Kalman = makeDisplayData('Kalman', KF,  groundTruth, manifoldFunc, config.edgePrior);
+                    disp.HPSTM  = makeDisplayData('HPSTM',  HP,  groundTruth, manifoldFunc, config.edgePrior);
+
+                    // 3) 缓存
+                    cached.GT     = { refined:GT,  display:disp.GT };
+                    cached.SG     = { refined:SG_, display:disp.SG };
+                    cached.Kalman = { refined:KF,  display:disp.Kalman };
+                    cached.HPSTM  = { refined:HP,  display:disp.HPSTM };
+
+                    // 4) 生成/更新四条 Tube（仅第一次会创建，之后参数变化会更新形状）
+                    buildOrUpdateTube('GT',     disp.GT,     0x10b981, 0.4);
+                    buildOrUpdateTube('SG',     disp.SG,     0xa855f7, 0.3);
+                    buildOrUpdateTube('Kalman', disp.Kalman, 0xa855f7, 0.3);
+                    buildOrUpdateTube('HPSTM',  disp.HPSTM,  0xfbbf24, 0.5);
+
+                    // 5) 更新指标（基于“当前激活”的 refined 数据）
+                    updateMetricsWithRefined(cached[config.activeAlgo].refined);
+
+                    // 6) 更新 noisy 点（不变）
+                    updateNoisyPointsGroup();
+
+                    computing.classList.remove('active');
+                }, 10);
+            }
+
+            function updateMetricsWithRefined(refinedData) {
+                let surfaceDist = 0, curvatureEnergy = 0, dataFidelity = 0;
+                const n = config.T;
+                const manifoldFunc = sceneConfigs[config.currentScene].manifold;
+                for (let i=0;i<n;i++){
+                    const x=refinedData[i*3], y=refinedData[i*3+1], z=refinedData[i*3+2];
+                    surfaceDist += Math.abs(y - manifoldFunc(x, z));
+                    const dx=x-noisyData[i*3], dy=y-noisyData[i*3+1], dz=z-noisyData[i*3+2];
+                    dataFidelity += Math.hypot(dx, dy, dz);
+                    if (i>0 && i<n-1){
+                    for (let j=0;j<3;j++){
+                        const idx=i*3+j;
+                        const d2 = refinedData[idx+3] - 2*refinedData[idx] + refinedData[idx-3];
+                        curvatureEnergy += d2*d2;
+                    }
                     }
                 }
-                
                 surfaceDist /= n;
                 dataFidelity /= n;
-                curvatureEnergy /= (n - 2);
-                
-                if (config.currentAlgo === 'HPSTM' || config.currentAlgo === 'GT') {
+                curvatureEnergy /= (n-2);
+                if (config.activeAlgo === 'HPSTM' || config.activeAlgo === 'GT') {
                     surfaceDist = Math.min(surfaceDist, 0.001);
                 }
-                
                 document.getElementById('surface-dist').textContent = surfaceDist.toFixed(3);
                 document.getElementById('curvature-energy').textContent = curvatureEnergy.toFixed(3);
                 document.getElementById('data-fidelity').textContent = dataFidelity.toFixed(3);
@@ -3609,6 +3546,7 @@
             const DRAG_THRESHOLD = 3;   // 像素
             let pressing = false;       // 是否按下但未确认拖动
             let didManipulate = false;  // 是否真的操控过相机（拖动/滚轮/双指缩放）
+
 
             let cmpRestoreRaf = null;
             function smoothReturnCamera(duration = 900) {
@@ -3824,7 +3762,7 @@
             lambdaSlider.addEventListener('input', (e) => {
                 config.lambda = Math.pow(10, parseFloat(e.target.value));
                 lambdaValue.textContent = config.lambda.toFixed(3);
-                computeRefinedData();
+                computeAllAlgorithmsOnce();
             });
             
             const noiseSlider = document.getElementById('noise-slider');
@@ -3833,6 +3771,7 @@
                 config.noiseLevel = parseFloat(e.target.value);
                 noiseValue.textContent = config.noiseLevel.toFixed(2);
                 generateData();
+                computeAllAlgorithmsOnce();
             });
             
             const winSlider = document.getElementById('win-slider');
@@ -3840,24 +3779,45 @@
             winSlider.addEventListener('input', (e) => {
                 config.winSize = parseInt(e.target.value);
                 winValue.textContent = config.winSize;
-                if (config.currentAlgo === 'HPSTM') {
-                    computeRefinedData();
-                }
+                computeAllAlgorithmsOnce();
             });
             
             const sceneButtons = document.querySelectorAll('.scene-button');
             sceneButtons.forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', () => {
                     sceneButtons.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     config.currentScene = btn.dataset.scene;
-                    generateData();
+                    generateData();              // 重新做 gt/noisy & manifold
+                    computeAllAlgorithmsOnce();
                 });
             });
             
+            const ALGO_ID_MAP = { HPSTM:'algo-hpstm', Kalman:'algo-kalman', SG:'algo-sg', GT:'algo-gt' };
+            function updateAlgoLabelActive(activeAlgo){
+                ['algo-hpstm','algo-kalman','algo-sg','algo-gt'].forEach(id=>{
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.classList.toggle('active', id === ALGO_ID_MAP[activeAlgo]);
+                });
+            }
+
+            function setActiveAlgorithm(algo){
+                if (!cached[algo]) return; // 还没算好就不切
+                config.activeAlgo = algo;
+                Object.entries(tubes).forEach(([k, mesh]) => {
+                    if (mesh) mesh.visible = (k === algo);
+                });
+                // 指标切换到该算法
+                updateMetricsWithRefined(cached[algo].refined);
+                // 左侧视觉同步
+                updateAlgoLabelActive(algo);
+            }
+
             // Initialize
             updateCameraPosition();
             generateData();
+            computeAllAlgorithmsOnce();
             
             // Animation
             let animationActive = true;
@@ -3895,7 +3855,7 @@
                     
                     // Update HPSTM light intensity
                     if (hpstmLight) {
-                        const targetIntensity = config.currentAlgo === 'HPSTM' ? 0.8 : 0.2;
+                        const targetIntensity = config.activeAlgo === 'HPSTM' ? 0.8 : 0.2;
                         hpstmLight.intensity += (targetIntensity - hpstmLight.intensity) * 0.1;
                     }
                     appState.renderer.clear(true, true, true);
@@ -3916,10 +3876,9 @@
                     animationActive = true;
                     animate();
                 },
-                setAlgorithm: (algo) => {
-                    config.currentAlgo = algo;
-                    computeRefinedData();
-                }
+                setActiveAlgorithm,
+                getActiveAlgo: () => config.activeAlgo,
+                updateAlgoLabelActive
             };
         }
         
