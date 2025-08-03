@@ -705,6 +705,14 @@
         #canvas-container.switching {
             opacity: 0.3;
         }
+
+        /* Optional performance optimizations */
+        #canvas-container,
+        .detail-card,
+        .label-bubble,
+        #control-panel { 
+            will-change: transform, opacity; 
+        }
         
         /* Responsive */
         @media (max-width: 768px) {
@@ -944,18 +952,18 @@
             // 触发回流确保能重启
             // eslint-disable-next-line no-unused-expressions
             label.offsetHeight;
-          
+            
             // 仅使用一条“唯一”的动画（把 delay 放进 animation 简写里）
             // 这样就无需再去改 style.animationDelay
             label.style.animation = `labelEnterRight 0.4s ease-out ${delaySec}s forwards`;
-          
+            
             // 动画结束后，自行清理 animation，避免后续被误触发
             const onEnd = () => {
-              // label.style.animation = 'none';
-              label.removeEventListener('animationend', onEnd);
+                // label.style.animation = 'none';
+                label.removeEventListener('animationend', onEnd);
             };
             label.addEventListener('animationend', onEnd);
-          }
+        }
 
         function playExitAnimation(label, delaySec = 0) {
             // 让后续的 .exiting 动画能接管
@@ -966,20 +974,20 @@
             label.offsetHeight;
             // 清掉内联 animation 声明，让类选择器生效
             label.style.removeProperty('animation');
-          
+            
             // 用 CSS 里的 .exiting 触发退出动画
             label.classList.add('exiting');
-          
+            
             const onEnd = () => {
-              label.classList.remove('exiting');
-              // 若需要动画后隐藏：
-              // label.style.display = 'none';
-              label.removeEventListener('animationend', onEnd);
+                label.classList.remove('exiting');
+                // 若需要动画后隐藏：
+                // label.style.display = 'none';
+                label.removeEventListener('animationend', onEnd);
             };
             label.addEventListener('animationend', onEnd);
-          }
-          
-          
+        }
+        
+        
         // ========== Moving Transformer Pipeline Class ==========
         class TransformerPipeline {
             constructor(scene, trajectoryCurve, noisyPoints) {
@@ -1103,7 +1111,7 @@
             
             updatePosition(position) {
                 this.position = position;
-              
+                
                 if (this.cylinder) {
                     this.cylinder.traverse((child) => {
                         if (child.geometry) child.geometry.dispose();
@@ -1117,19 +1125,19 @@
                     });
                     this.group.remove(this.cylinder);
                 }
-              
+                
                 const half = this.windowSize / 2;
                 let startT = position - half;
                 let endT   = position + half;
-              
+                
                 startT = Math.max(0, startT);
                 endT   = Math.min(1, endT);
-              
+                
                 if (endT - startT <= 1e-4) {
                     this.currentFadeAlpha = 1.0;
                     return;
                 }
-              
+                
                 const segments = 30;
                 const cylinderPoints = [];
                 for (let i = 0; i <= segments; i++) {
@@ -1137,20 +1145,20 @@
                     cylinderPoints.push(this.trajectoryCurve.getPoint(t));
                 }
                 const cylinderCurve = new THREE.CatmullRomCurve3(cylinderPoints);
-              
+                
                 const tubularSegments = 80;
                 const outerRadius = 1.2;
                 const innerRadius = 0.85;
                 const radialSegments = 80;
                 const closed = false;
-              
+                
                 const outerTubeGeometry = new THREE.TubeGeometry(
                     cylinderCurve, tubularSegments, outerRadius, radialSegments, closed
                 );
                 const innerTubeGeometry = new THREE.TubeGeometry(
                     cylinderCurve, tubularSegments, innerRadius, radialSegments, closed
                 );
-              
+                
                 const outerTubeMaterial = new THREE.MeshPhongMaterial({
                     color: 0xa855f7,
                     emissive: 0xa855f7,
@@ -1161,7 +1169,7 @@
                     side: THREE.FrontSide,
                     depthWrite: false
                 });
-              
+                
                 const innerTubeMaterial = new THREE.MeshPhongMaterial({
                     color: 0x7c3aed,
                     emissive: 0x7c3aed,
@@ -1172,7 +1180,7 @@
                     side: THREE.BackSide,
                     depthWrite: true
                 });
-              
+                
                 const outerTubeMesh = new THREE.Mesh(outerTubeGeometry, outerTubeMaterial);
                 outerTubeMesh.renderOrder = 102;
                 outerTubeMesh.userData.type = 'outer';
@@ -1180,7 +1188,7 @@
                 const innerTubeMesh = new THREE.Mesh(innerTubeGeometry, innerTubeMaterial);
                 innerTubeMesh.renderOrder = 101;
                 innerTubeMesh.userData.type = 'inner';
-              
+                
                 const ringSegments = 64;
                 const ringMat = new THREE.LineBasicMaterial({
                     color: 0xd6b2ff, 
@@ -1189,16 +1197,16 @@
                     depthWrite: false,
                     linewidth: 2
                 });
-              
+                
                 const makeEndCap = (t) => {
                     const pos = this.trajectoryCurve.getPoint(t);
                     const tan = this.trajectoryCurve.getTangent(t);
                     const up  = new THREE.Vector3(0,1,0);
                     const bin = new THREE.Vector3().crossVectors(tan, up).normalize();
                     const nor = new THREE.Vector3().crossVectors(bin, tan).normalize();
-              
+                
                     const capGroup = new THREE.Group();
-              
+                
                     const mkRing = (r) => {
                         const pts = [];
                         for (let i = 0; i <= ringSegments; i++) {
@@ -1210,10 +1218,10 @@
                         const geo = new THREE.BufferGeometry().setFromPoints(pts);
                         return new THREE.Line(geo, ringMat.clone());
                     };
-              
+                
                     const outerLine = mkRing(1.2);
                     const innerLine = mkRing(0.85);
-              
+                
                     const spokeCount = 8;
                     for (let i = 0; i < spokeCount; i++) {
                         const ang = (i / spokeCount) * Math.PI * 2;
@@ -1230,26 +1238,26 @@
                         spokeLine.renderOrder = 103;
                         capGroup.add(spokeLine);
                     }
-              
+                
                     outerLine.renderOrder = 103;
                     innerLine.renderOrder = 103;
                     capGroup.add(outerLine);
                     capGroup.add(innerLine);
                     return capGroup;
                 };
-              
+                
                 const frontCap = makeEndCap(startT);
                 const backCap  = makeEndCap(endT);
-              
+                
                 this.cylinder = new THREE.Group();
                 this.cylinder.add(outerTubeMesh);
                 this.cylinder.add(innerTubeMesh);
                 this.cylinder.add(frontCap);
                 this.cylinder.add(backCap);
                 this.group.add(this.cylinder);
-              
+                
                 this.currentFadeAlpha = 1.0;
-              
+                
                 this.checkNoisyPointAbsorption();
                 if (position > this.windowSize) {
                     this.generateOutputParticles();
@@ -1315,7 +1323,7 @@
                 for (let i = 0; i < sparkCount; i++) {
                     const spark = this.sparkParticles.find(p => !p.visible);
                     if (!spark) continue;
-              
+                
                     spark.position.copy(startPos);
                     spark.visible = true;
                     spark.material.color.setHex(0xff6666);
@@ -1323,7 +1331,7 @@
                     spark.material.emissiveIntensity = 3.0;
                     spark.material.opacity = 1;
                     spark.scale.setScalar(0.25);
-              
+                
                     const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.5;
                     const speed = 0.1 + Math.random() * 0.05;
                     const velocity = new THREE.Vector3(
@@ -1331,27 +1339,27 @@
                         Math.random() * 0.1,
                         Math.sin(angle) * speed
                     );
-              
+                
                     const animateSpark = () => {
                         if (!spark.visible) return;
-              
+                    
                         spark.position.add(velocity);
                         velocity.multiplyScalar(0.95);
                         spark.material.opacity *= 0.92;
                         spark.scale.multiplyScalar(0.96);
-              
+                    
                         const currentColor = spark.material.color;
                         const purpleColor = new THREE.Color(0xa855f7);
                         currentColor.lerp(purpleColor, 0.1);
                         spark.material.emissive.copy(currentColor);
-              
+                    
                         if (spark.material.opacity > 0.01) {
                             requestAnimationFrame(animateSpark);
                         } else {
                             spark.visible = false;
                         }
                     };
-              
+                
                     animateSpark();
                 }
             }
@@ -1596,22 +1604,22 @@
         function makeDisplayData(algo, refined, gt, manifoldFunc, edgePrior){
             const T = refined.length/3;
             if (!edgePrior?.enabled) return new Float32Array(refined);
-          
+        
             const apply = (edgePrior.applyTo==='All') ||
                           (edgePrior.applyTo==='HPSTM' && (algo==='HPSTM' || algo==='GT'));
             if (!apply) return new Float32Array(refined);
-          
+        
             const k = Math.max(1, Math.min(edgePrior.width|0, Math.floor(T/2)));
             const beta = Math.max(0, Math.min(1, edgePrior.strength ?? 0.35));
             const s = edgeTaperWeights(T, k, beta);
-          
+        
             const out = new Float32Array(refined.length);
             const manifoldAware = (algo==='HPSTM' || algo==='GT');
-          
+        
             for (let i=0;i<T;i++){
                 const a = 1 - s[i];
                 const b = s[i];
-          
+        
                 if (manifoldAware){
                     const x = a*refined[3*i]   + b*gt[3*i];
                     const z = a*refined[3*i+2] + b*gt[3*i+2];
@@ -1878,19 +1886,19 @@
             const half = (m-1)>>1;
             const mirrorEdge = opts.mirrorEdge ?? true;
             const huberDelta = (opts.huberK ?? 1.5) * noiseSigma;
-          
+            
             let x = new Float32Array(T), z = new Float32Array(T);
             for (let i=0;i<T;i++){ x[i]=data[3*i]; z[i]=data[3*i+2]; }
             const xNew = new Float32Array(T), zNew = new Float32Array(T), yOut = new Float32Array(T);
-          
+            
             const tri = new Float64Array(m);
             for (let j=0;j<m;j++){ const d=Math.abs(j-half); tri[j]=1.0 - d/(half+1); }
-          
+            
             for (let it=0; it<iters; it++){
                 for (let i=0;i<T;i++){
                     const a = i - half, L = m;
                     const yx = new Float64Array(L), yz = new Float64Array(L), w = new Float64Array(L);
-          
+            
                     for (let j=0;j<L;j++){
                         const t  = a + j;
                         const ti = mirrorEdge ? reflIdx(t, T) : Math.max(0, Math.min(T-1, t));
@@ -1901,22 +1909,22 @@
                         w[j]  = rw * tri[j];
                         yx[j] = x[ti]; yz[j] = z[ti];
                     }
-          
+            
                     let xFit = sgCenterFitWeighted(yx, w, 3);
                     let zFit = sgCenterFitWeighted(yz, w, 3);
-          
+            
                     if (i>0 && i<T-1 && lambda>0){
                         const lapX = x[i-1] - 2*x[i] + x[i+1];
                         const lapZ = z[i-1] - 2*z[i] + z[i+1];
                         const alpha = Math.min(0.5, 2.0*lambda);
                         xFit -= alpha*lapX; zFit -= alpha*lapZ;
                     }
-          
+            
                     xNew[i]=xFit; zNew[i]=zFit;
                 }
                 for (let i=0;i<T;i++){ x[i]=xNew[i]; z[i]=zNew[i]; yOut[i]=manifoldFunc(x[i],z[i]); }
             }
-          
+            
             const out = new Float32Array(data.length);
             for (let i=0;i<T;i++){ out[3*i]=x[i]; out[3*i+1]=yOut[i]; out[3*i+2]=z[i]; }
             return out;
@@ -1929,9 +1937,9 @@
             const T = data.length/3;
             const half = Math.max(1, Math.floor((Math.floor(W/2)*2 + 1 - 1)/2));
             const centered = hpstmWindowed(data, manifoldFunc, W, lambda, itersCenter, noiseSigma, {mirrorEdge:true});
-          
+            
             const f = hpstmCausalLeft(data, manifoldFunc, W, lambda*0.8, 1, noiseSigma);
-          
+            
             const rev = new Float32Array(data.length);
             for (let i=0;i<T;i++){
                 rev[3*i  ] = data[3*(T-1-i)  ];
@@ -1945,7 +1953,7 @@
                 b[3*i+1] = bRev[3*(T-1-i)+1];
                 b[3*i+2] = bRev[3*(T-1-i)+2];
             }
-          
+            
             const out = new Float32Array(data.length);
             for (let i=0;i<T;i++){
                 let x, z;
@@ -2633,7 +2641,7 @@
                 scene.background = new THREE.Color(0x050508);
                 scene.fog = new THREE.Fog(0x050508, 50, 150);
                 appState.mechanismScene = scene;
-             // ——下面的物体、光源、网格等初始化代码保持不变——
+               // ——下面的物体、光源、网格等初始化代码保持不变——
             }
             appState.currentScene = scene;
             
@@ -2693,8 +2701,8 @@
                 const z = positionAttribute.getZ(i);
                 
                 const y = Math.sin(x * 0.15) * 4 + 
-                         Math.cos(z * 0.15) * 3 + 
-                         Math.sin(x * z * 0.01) * 2 + 10;
+                          Math.cos(z * 0.15) * 3 + 
+                          Math.sin(x * z * 0.01) * 2 + 10;
                 
                 positionAttribute.setY(i, y);
             }
@@ -2753,8 +2761,8 @@
                 const z = Math.sin(angle) * radius;
                 
                 const y = Math.sin(x * 0.15) * 4 + 
-                         Math.cos(z * 0.15) * 3 + 
-                         Math.sin(x * z * 0.01) * 2 + 10.1;
+                          Math.cos(z * 0.15) * 3 + 
+                          Math.sin(x * z * 0.01) * 2 + 10.1;
                 
                 trajectoryPoints.push(new THREE.Vector3(x, y, z));
             }
@@ -2916,117 +2924,135 @@
             scene.rotation.y = initialRotation.y;
 
             // === 放在 initMechanismApp 内部，事件绑定之前 ===
-            const IDLE_RESTORE_MS = 3000;     // 交互结束 1.5s 后恢复
+            const IDLE_RESTORE_MS = 3000;   // 交互结束 1.5s 后恢复
             let idleTimerMech = null;
+            let mechRestoreRaf = null;
+            let mechRestoring = false;
 
             function smoothReturnRotation(target, duration = 3000) {
-            const startX = appState.currentScene.rotation.x;
-            const startY = appState.currentScene.rotation.y;
-            const t0 = performance.now();
-            (function tick(now){
-                const t = Math.min(1, (now - t0) / duration);
-                const e = t * t * (3 - 2 * t); // smoothstep
-                appState.currentScene.rotation.x = startX + (target.x - startX) * e;
-                appState.currentScene.rotation.y = startY + (target.y - startY) * e;
-                if (t < 1) requestAnimationFrame(tick);
-            })(t0);
+                mechRestoring = true;
+                const startX = appState.currentScene.rotation.x;
+                const startY = appState.currentScene.rotation.y;
+                const t0 = performance.now();
+                const tick = (now) => {
+                    if (!mechRestoring) return; // 允许随时取消
+                    const t = Math.min(1, (now - t0) / duration);
+                    const e = t * t * (3 - 2 * t); // smoothstep
+                    appState.currentScene.rotation.x = startX + (target.x - startX) * e;
+                    appState.currentScene.rotation.y = startY + (target.y - startY) * e;
+                    if (t < 1) mechRestoreRaf = requestAnimationFrame(tick);
+                    else mechRestoring = false;
+                };
+                mechRestoreRaf = requestAnimationFrame(tick);
+            }
+
+            function cancelMechRestore() {
+                if (idleTimerMech) { clearTimeout(idleTimerMech); idleTimerMech = null; }
+                mechRestoring = false;
+                if (mechRestoreRaf) { cancelAnimationFrame(mechRestoreRaf); mechRestoreRaf = null; }
             }
 
             function scheduleAutoRotateResume() {
-            if (idleTimerMech) clearTimeout(idleTimerMech);
-            idleTimerMech = setTimeout(() => {
-                autoRotation = true;                   // 恢复自动旋转
-                smoothReturnRotation(initialRotation); // 回到默认机位
-            }, IDLE_RESTORE_MS);
+                if (idleTimerMech) clearTimeout(idleTimerMech);
+                idleTimerMech = setTimeout(() => {
+                    autoRotation = true; // 恢复自动旋转
+                    smoothReturnRotation(initialRotation); // 回到默认机位
+                }, IDLE_RESTORE_MS);
             }
 
             function kickMechanismRAF() {
-            if (appState.currentMode === 'mechanism') {
-                try { appState.mechanismApp?.resume?.(); } catch (e) {}
-            }
+                if (appState.currentMode === 'mechanism') {
+                    try { appState.mechanismApp?.resume?.(); } catch (e) {}
+                }
             }
 
             if (!appState.bindings.mechanism) {
                 // 鼠标
+                appState.renderer.domElement.addEventListener('mouseenter', function() {
+                    if (appState.currentMode !== 'mechanism') return;
+                    cancelMechRestore(); // 回到画布时立即取消复位，避免“抢帧”
+                });
                 appState.renderer.domElement.addEventListener('mousedown', function(e) {
-                  if (appState.currentMode !== 'mechanism') return;
-                  isDragging = true;
-                  autoRotation = false;
-                  previousMousePosition = { x: e.clientX, y: e.clientY };
+                    if (appState.currentMode !== 'mechanism') return;
+                    cancelMechRestore(); // 先取消任何待触发/正在进行的复位
+                    isDragging = true;
+                    autoRotation = false;
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
                 });
-              
+                
                 appState.renderer.domElement.addEventListener('mousemove', function(e) {
-                  if (!isDragging || appState.currentMode !== 'mechanism') return;
-                  const deltaMove = { x: e.clientX - previousMousePosition.x, y: e.clientY - previousMousePosition.y };
-                  scene.rotation.y += deltaMove.x * 0.01;
-                  scene.rotation.x += deltaMove.y * 0.01;
-                  scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
-                  previousMousePosition = { x: e.clientX, y: e.clientY };
+                    if (!isDragging || appState.currentMode !== 'mechanism') return;
+                    const deltaMove = { x: e.clientX - previousMousePosition.x, y: e.clientY - previousMousePosition.y };
+                    scene.rotation.y += deltaMove.x * 0.01;
+                    scene.rotation.x += deltaMove.y * 0.01;
+                    scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
                 });
-              
+                
                 appState.renderer.domElement.addEventListener('mouseup', function() {
-                  isDragging = false;
-                  isPlaying = true;                 // 防止误触空格造成暂停
-                  scheduleAutoRotateResume();
-                  kickMechanismRAF();
+                    isDragging = false;
+                    isPlaying = true;           // 防止误触空格造成暂停
+                    scheduleAutoRotateResume();
+                    kickMechanismRAF();
                 });
-              
+                
                 appState.renderer.domElement.addEventListener('mouseleave', function() {
-                  isDragging = false;
-                  scheduleAutoRotateResume();
-                  kickMechanismRAF();
+                    isDragging = false;
+                    scheduleAutoRotateResume();
+                    kickMechanismRAF();
                 });
-              
+                
                 // 机制模式建议也监听一次 wheel（有缩放交互时同样恢复）
                 appState.renderer.domElement.addEventListener('wheel', function(e) {
-                  if (appState.currentMode !== 'mechanism') return;
-                  e.preventDefault();
-                  scheduleAutoRotateResume();
-                  kickMechanismRAF();
+                    if (appState.currentMode !== 'mechanism') return;
+                    e.preventDefault();
+                    scheduleAutoRotateResume();
+                    kickMechanismRAF();
                 }, { passive: false });
-              
+                
                 let touchStart = null;   // 机制只用到 touchStart
 
                 // 触摸
                 appState.renderer.domElement.addEventListener('touchstart', function(e) {
-                  if (e.touches.length === 1 && appState.currentMode === 'mechanism') {
-                    isDragging = true;
-                    autoRotation = false;
-                    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    previousMousePosition = touchStart;
-                  }
-                });
-              
-                appState.renderer.domElement.addEventListener('touchmove', function(e) {
-                  if (!isDragging || !touchStart || appState.currentMode !== 'mechanism') return;
-                  e.preventDefault();
-                  const touch = e.touches[0];
-                  const deltaMove = { x: touch.clientX - previousMousePosition.x, y: touch.clientY - previousMousePosition.y };
-                  scene.rotation.y += deltaMove.x * 0.01;
-                  scene.rotation.x += deltaMove.y * 0.01;
-                  scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
-                  previousMousePosition = { x: touch.clientX, y: touch.clientY };
+                    if (e.touches.length === 1 && appState.currentMode === 'mechanism') {
+                        cancelMechRestore();
+                        isDragging = true;
+                        autoRotation = false;
+                        touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                        previousMousePosition = touchStart;
+                    }
                 }, { passive: false });
-              
+                
+                appState.renderer.domElement.addEventListener('touchmove', function(e) {
+                    if (!isDragging || !touchStart || appState.currentMode !== 'mechanism') return;
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const deltaMove = { x: touch.clientX - previousMousePosition.x, y: touch.clientY - previousMousePosition.y };
+                    scene.rotation.y += deltaMove.x * 0.01;
+                    scene.rotation.x += deltaMove.y * 0.01;
+                    scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+                    previousMousePosition = { x: touch.clientX, y: touch.clientY };
+                }, { passive: false });
+                
                 appState.renderer.domElement.addEventListener('touchend', function() {
-                  isDragging = false;
-                  scheduleAutoRotateResume();
-                  kickMechanismRAF();
+                    isDragging = false;
+                    scheduleAutoRotateResume();
+                    kickMechanismRAF();
                 });
-              
+                
                 // Space 暂停/恢复 只绑定一次
                 document.addEventListener('keydown', (e) => {
-                  if (e.code === 'Space' && appState.currentMode === 'mechanism') {
-                    e.preventDefault();
-                    isPlaying = !isPlaying;
-                    if (isPlaying) {
-                      waveStartTime = performance.now() - (wavePosition * 1000 / waveSpeed);
+                    if (e.code === 'Space' && appState.currentMode === 'mechanism') {
+                        e.preventDefault();
+                        isPlaying = !isPlaying;
+                        if (isPlaying) {
+                            waveStartTime = performance.now() - (wavePosition * 1000 / waveSpeed);
+                        }
                     }
-                  }
                 });
-              
+                
                 appState.bindings.mechanism = true;
-              }              
+            }               
             
             const animationSpeed = 0.15;
             
@@ -3212,7 +3238,7 @@
                 scene.background = new THREE.Color(0x050508);
                 scene.fog = new THREE.Fog(0x050508, 50, 150);
                 appState.comparisonScene = scene;
-             // ——下面的物体、光源、网格等初始化代码保持不变——
+               // ——下面的物体、光源、网格等初始化代码保持不变——
             }
             appState.currentScene = scene;
             
@@ -3580,56 +3606,58 @@
             const defaultCam = { radius: 70, theta: Math.PI/4, phi: Math.PI/3 };
             const IDLE_RESTORE_MS_CMP = 1500;
             let idleTimerCmp = null;
-            const DRAG_THRESHOLD = 3;    // 像素
-            let pressing = false;        // 是否按下但未确认拖动
-            let didManipulate = false;   // 是否真的操控过相机（拖动/滚轮/双指缩放）
+            const DRAG_THRESHOLD = 3;   // 像素
+            let pressing = false;       // 是否按下但未确认拖动
+            let didManipulate = false;  // 是否真的操控过相机（拖动/滚轮/双指缩放）
 
-
+            let cmpRestoreRaf = null;
             function smoothReturnCamera(duration = 900) {
-                restoringCam = true;            // 标记：正在复位
-                autoRotate   = false;           // 暂停自动旋转，避免覆盖插值
-              
+                restoringCam = true;
+                autoRotate   = false;
                 const start = { r: cameraRadius, th: cameraTheta, ph: cameraPhi };
                 const end   = defaultCam;
                 const t0 = performance.now();
-              
-                (function tick(now){
-                  const t = Math.min(1, (now - t0) / duration);
-                  // 取更平滑的 easeInOutCubic
-                  const e = (t < 0.5) ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
-                  cameraRadius = start.r  + (end.radius - start.r) * e;
-                  cameraTheta  = start.th + (end.theta  - start.th) * e;
-                  cameraPhi    = start.ph + (end.phi    - start.ph) * e;
-                  updateCameraPosition();
-              
-                  if (t < 1) {
-                    requestAnimationFrame(tick);
-                  } else {
-                    restoringCam = false;       // 复位完成
-                    autoRotate   = true;        // 现在再恢复自动旋转
-                    // 让自动旋转衔接顺滑（用当前 theta 作为起点）
-                    autoRotateTime = cameraTheta;
-                  }
-                })(t0);
-              }
-              
+                const tick = (now) => {
+                    if (!restoringCam) return; // 允许随时取消
+                    const t = Math.min(1, (now - t0) / duration);
+                    const e = (t < 0.5) ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+                    cameraRadius = start.r  + (end.radius - start.r) * e;
+                    cameraTheta  = start.th + (end.theta  - start.th) * e;
+                    cameraPhi    = start.ph + (end.phi    - start.ph) * e;
+                    updateCameraPosition();
+                    if (t < 1) cmpRestoreRaf = requestAnimationFrame(tick);
+                    else {
+                        restoringCam = false;
+                        autoRotate   = true;
+                        autoRotateTime = cameraTheta;
+                    }
+                };
+                cmpRestoreRaf = requestAnimationFrame(tick);
+            }
+            
+            function cancelCmpRestore() {
+                if (idleTimerCmp) { clearTimeout(idleTimerCmp); idleTimerCmp = null; }
+                restoringCam = false;
+                if (cmpRestoreRaf) { cancelAnimationFrame(cmpRestoreRaf); cmpRestoreRaf = null; }
+            }
+            
             function scheduleCmpAutoResume() {
-                if (!didManipulate) {     // 没有操控过相机，不安排复位
+                if (!didManipulate) {   // 没有操控过相机，不安排复位
                     autoRotate = true;
                     return;
                 }
                 if (idleTimerCmp) clearTimeout(idleTimerCmp);
                 idleTimerCmp = setTimeout(() => {
                     smoothReturnCamera(900);
-                    didManipulate = false;  // 复位后清空
+                    didManipulate = false; // 复位后清空
                 }, IDLE_RESTORE_MS_CMP);
             }
-              
+            
 
             function kickComparisonRAF() {
-            if (appState.currentMode === 'comparison') {
-                try { appState.comparisonApp?.resume?.(); } catch (e) {}
-            }
+                if (appState.currentMode === 'comparison') {
+                    try { appState.comparisonApp?.resume?.(); } catch (e) {}
+                }
             }
 
             
@@ -3648,140 +3676,147 @@
             
             if (!appState.bindings.comparison) {
                 appState.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
-              
-                appState.renderer.domElement.addEventListener('mousedown', (e) => {
-                  if (appState.currentMode !== 'comparison') return;
-                  pressing = true;
-                  isDragging = false;
-                  didManipulate = false;
-                  previousPosition = { x: e.clientX, y: e.clientY };
+                
+                appState.renderer.domElement.addEventListener('mouseenter', () => {
+                    if (appState.currentMode !== 'comparison') return;
+                    cancelCmpRestore(); // 鼠标一回到画布就取消复位
                 });
-              
+
+                appState.renderer.domElement.addEventListener('mousedown', (e) => {
+                    if (appState.currentMode !== 'comparison') return;
+                    cancelCmpRestore(); // 回来准备拖拽，先取消复位
+                    pressing = true;
+                    isDragging = false;
+                    didManipulate = false;
+                    previousPosition = { x: e.clientX, y: e.clientY };
+                });
+                
                 appState.renderer.domElement.addEventListener('mousemove', (e) => {
                     if (!pressing || appState.currentMode !== 'comparison') return;
                     const dx = e.clientX - previousPosition.x;
                     const dy = e.clientY - previousPosition.y;
                     // 超过阈值才认为开始拖动，并暂停自动旋转
                     if (!isDragging && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
-                      isDragging = true;
-                      autoRotate = false;
-                      didManipulate = true;
-                    }
-                    if (isDragging) {
-                      cameraTheta -= dx * 0.005;
-                      cameraPhi   += dy * 0.005;
-                      cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
-                      updateCameraPosition();
-                      previousPosition = { x: e.clientX, y: e.clientY };
-                    }
-                });
-              
-                appState.renderer.domElement.addEventListener('mouseup', () => {
-                    if (pressing) {
-                      pressing = false;
-                      // 只有真的操作过相机才安排复位
-                      if (didManipulate || isDragging) {
-                        isDragging = false;
-                        scheduleCmpAutoResume();
-                      } else {
-                        // 只是点了一下，不动相机：保持当前自动旋转状态
-                        autoRotate = true;
-                      }
-                      kickComparisonRAF();
-                    }
-                });
-              
-                appState.renderer.domElement.addEventListener('mouseleave', () => {
-                    if (!pressing) return;
-                    pressing = false;
-                    if (didManipulate || isDragging) {
-                      isDragging = false;
-                      scheduleCmpAutoResume();
-                    }
-                    kickComparisonRAF();
-                });
-              
-                appState.renderer.domElement.addEventListener('wheel', (e) => {
-                  if (appState.currentMode !== 'comparison') return;
-                  e.preventDefault();
-                  autoRotate = false;
-                  didManipulate = true;
-                  cameraRadius += e.deltaY * 0.02;
-                  cameraRadius = Math.max(30, Math.min(120, cameraRadius));
-                  updateCameraPosition();
-                  scheduleCmpAutoResume();
-                  kickComparisonRAF();
-                }, { passive: false });
-              
-                let touchStart = null;
-                let initialDistance = null;
-
-                // touch
-                appState.renderer.domElement.addEventListener('touchstart', (e) => {
-                  if (appState.currentMode !== 'comparison') return;
-                  e.preventDefault();
-                  if (e.touches.length === 1) {
-                    isDragging = true;
-                    autoRotate = false;
-                    pressing = true;
-                    isDragging = false;
-                    didManipulate = false;
-                    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    previousPosition = touchStart;
-                  } else if (e.touches.length === 2) {
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    initialDistance = Math.sqrt(dx * dx + dy * dy);
-                    autoRotate = false;
-                    didManipulate = true;
-                  }
-                }, { passive: false });
-              
-                appState.renderer.domElement.addEventListener('touchmove', (e) => {
-                  if (appState.currentMode !== 'comparison') return;
-                  e.preventDefault();
-                  if (e.touches.length === 1 && isDragging && touchStart) {
-                    const touch = e.touches[0];
-                    const deltaMove = { x: touch.clientX - previousPosition.x, y: touch.clientY - previousPosition.y };
-                    if (!isDragging && (Math.abs(deltaMove.x) > DRAG_THRESHOLD || Math.abs(deltaMove.y) > DRAG_THRESHOLD)) {
                         isDragging = true;
                         autoRotate = false;
                         didManipulate = true;
                     }
                     if (isDragging) {
-                        cameraTheta -= deltaMove.x * 0.005;
-                        cameraPhi   += deltaMove.y * 0.005;
+                        cameraTheta -= dx * 0.005;
+                        cameraPhi   += dy * 0.005;
                         cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
                         updateCameraPosition();
-                        previousPosition = { x: touch.clientX, y: touch.clientY };
+                        previousPosition = { x: e.clientX, y: e.clientY };
                     }
-                  } else if (e.touches.length === 2 && initialDistance) {
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const scale = distance / initialDistance;
-                    cameraRadius = Math.max(30, Math.min(120, cameraRadius / scale));
+                });
+                
+                appState.renderer.domElement.addEventListener('mouseup', () => {
+                    if (pressing) {
+                        pressing = false;
+                        // 只有真的操作过相机才安排复位
+                        if (didManipulate || isDragging) {
+                            isDragging = false;
+                            scheduleCmpAutoResume();
+                        } else {
+                            // 只是点了一下，不动相机：保持当前自动旋转状态
+                            autoRotate = true;
+                        }
+                        kickComparisonRAF();
+                    }
+                });
+                
+                appState.renderer.domElement.addEventListener('mouseleave', () => {
+                    if (!pressing) return;
+                    pressing = false;
+                    if (didManipulate || isDragging) {
+                        isDragging = false;
+                        scheduleCmpAutoResume();
+                    }
+                    kickComparisonRAF();
+                });
+                
+                appState.renderer.domElement.addEventListener('wheel', (e) => {
+                    if (appState.currentMode !== 'comparison') return;
+                    e.preventDefault();
+                    autoRotate = false;
+                    didManipulate = true;
+                    cameraRadius += e.deltaY * 0.02;
+                    cameraRadius = Math.max(30, Math.min(120, cameraRadius));
                     updateCameraPosition();
-                    initialDistance = distance;
-                  }
+                    scheduleCmpAutoResume();
+                    kickComparisonRAF();
                 }, { passive: false });
-              
+                
+                let touchStart = null;
+                let initialDistance = null;
+
+                // touch
+                appState.renderer.domElement.addEventListener('touchstart', (e) => {
+                    if (appState.currentMode !== 'comparison') return;
+                    cancelCmpRestore();
+                    e.preventDefault();
+                    if (e.touches.length === 1) {
+                        isDragging = true;
+                        autoRotate = false;
+                        pressing = true;
+                        isDragging = false;
+                        didManipulate = false;
+                        touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                        previousPosition = touchStart;
+                    } else if (e.touches.length === 2) {
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        initialDistance = Math.sqrt(dx * dx + dy * dy);
+                        autoRotate = false;
+                        didManipulate = true;
+                    }
+                }, { passive: false });
+                
+                appState.renderer.domElement.addEventListener('touchmove', (e) => {
+                    if (appState.currentMode !== 'comparison') return;
+                    e.preventDefault();
+                    if (e.touches.length === 1 && isDragging && touchStart) {
+                        const touch = e.touches[0];
+                        const deltaMove = { x: touch.clientX - previousPosition.x, y: touch.clientY - previousPosition.y };
+                        if (!isDragging && (Math.abs(deltaMove.x) > DRAG_THRESHOLD || Math.abs(deltaMove.y) > DRAG_THRESHOLD)) {
+                            isDragging = true;
+                            autoRotate = false;
+                            didManipulate = true;
+                        }
+                        if (isDragging) {
+                            cameraTheta -= deltaMove.x * 0.005;
+                            cameraPhi   += deltaMove.y * 0.005;
+                            cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
+                            updateCameraPosition();
+                            previousPosition = { x: touch.clientX, y: touch.clientY };
+                        }
+                    } else if (e.touches.length === 2 && initialDistance) {
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const scale = distance / initialDistance;
+                        cameraRadius = Math.max(30, Math.min(120, cameraRadius / scale));
+                        updateCameraPosition();
+                        initialDistance = distance;
+                    }
+                }, { passive: false });
+                
                 appState.renderer.domElement.addEventListener('touchend', () => {
                     isDragging = false;
                     pressing = false;
                     touchStart = null;
                     initialDistance = null;
                     if (didManipulate) {
-                      scheduleCmpAutoResume();
+                        scheduleCmpAutoResume();
                     } else {
-                      autoRotate = true;
+                        autoRotate = true;
                     }
                     kickComparisonRAF();
                 });
-              
+                
                 appState.bindings.comparison = true;
-              }
-              
+            }
+            
             
             // UI Controls
             const lambdaSlider = document.getElementById('lambda-slider');
@@ -3835,17 +3870,17 @@
                     // Auto-rotate camera
                     // Auto-rotate camera (smooth towards targets to avoid radius jump)
                     if (autoRotate && !restoringCam) {
-                      const AR_SPEED = 0.002;
-                      const SMOOTH   = 0.08;    // 缓动系数，越大越跟手
-                      autoRotateTime += AR_SPEED;
-                      const targetTheta  = autoRotateTime;
-                      const targetPhi    = Math.PI / 3;
-                      const targetRadius = defaultCam.radius + Math.sin(autoRotateTime * 2) * 3;
+                        const AR_SPEED = 0.002;
+                        const SMOOTH   = 0.08;    // 缓动系数，越大越跟手
+                        autoRotateTime += AR_SPEED;
+                        const targetTheta  = autoRotateTime;
+                        const targetPhi    = Math.PI / 3;
+                        const targetRadius = defaultCam.radius + Math.sin(autoRotateTime * 2) * 3;
                     
-                      cameraTheta  += (targetTheta  - cameraTheta)  * SMOOTH;
-                      cameraPhi    += (targetPhi    - cameraPhi)    * SMOOTH;
-                      cameraRadius += (targetRadius - cameraRadius) * SMOOTH;
-                      updateCameraPosition();
+                        cameraTheta  += (targetTheta  - cameraTheta)  * SMOOTH;
+                        cameraPhi    += (targetPhi    - cameraPhi)    * SMOOTH;
+                        cameraRadius += (targetRadius - cameraRadius) * SMOOTH;
+                        updateCameraPosition();
                     }
 
                     
