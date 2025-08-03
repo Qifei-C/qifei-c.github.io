@@ -52,7 +52,7 @@
         }
         
         #title .main-title {
-            font-size: 72px;
+            font-size: 96px;
             font-weight: 900;
             color: #ffffff;
             line-height: 1;
@@ -75,7 +75,7 @@
         /* Title animation states */
         #title.switching .main-title {
             transform: translateY(-10px);
-            opacity: 0.3;
+            opacity: 0.0;
         }
         
         #title.switching .subtitle {
@@ -241,14 +241,52 @@
             border-left: 4px solid;
             opacity: 0;
             transform: translateX(-20px);
-            animation: slideInLabel 0.5s ease forwards;
         }
         
-        @keyframes slideInLabel {
-            to {
+        /* Enhanced switching animations */
+        @keyframes labelExitLeft {
+            0% {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateX(0) scale(1) rotateY(0);
+                filter: blur(0);
             }
+            50% {
+                opacity: 0.5;
+                transform: translateX(-30px) scale(0.9) rotateY(-15deg);
+                filter: blur(2px);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-50px) scale(0.8) rotateY(-25deg);
+                filter: blur(4px);
+            }
+        }
+        
+        @keyframes labelEnterRight {
+            0% {
+                opacity: 0;
+                transform: translateX(50px) scale(0.8) rotateY(25deg);
+                filter: blur(4px);
+            }
+            50% {
+                opacity: 0.5;
+                transform: translateX(20px) scale(0.9) rotateY(10deg);
+                filter: blur(2px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1) rotateY(0);
+                filter: blur(0);
+            }
+        }
+        
+        .label-bubble.exiting {
+            animation: labelExitLeft 0.4s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        .label-bubble.entering {
+            animation: labelEnterRight 0.4s ease-out forwards;
         }
         
         .label-bubble:hover {
@@ -273,27 +311,20 @@
         }
         
         /* Algorithm Labels (for comparison mode) */
-        .algo-label {
-            animation-delay: 0.3s;
-        }
         
         #algo-hpstm {
-            animation-delay: 0.3s;
             border-left-color: #fbbf24;
         }
         
         #algo-kalman {
-            animation-delay: 0.5s;
             border-left-color: #a855f7;
         }
         
         #algo-sg {
-            animation-delay: 0.7s;
             border-left-color: #a855f7;
         }
         
         #algo-gt {
-            animation-delay: 0.9s;
             border-left-color: #10b981;
         }
         
@@ -333,7 +364,7 @@
             top: 0;
             bottom: 0;
             width: 4px;
-            background: var(--accent-color, #10b981);
+            background: var(--accent-color, #fbbf24);
             transition: background 0.2s ease;
         }
         
@@ -360,7 +391,7 @@
             left: 0;
             width: 60px;
             height: 3px;
-            background: var(--accent-color, #10b981);
+            background: var(--accent-color, #fbbf24);
             border-radius: 2px;
             transition: background 0.2s ease;
         }
@@ -403,9 +434,9 @@
             top: 8px;
             width: 6px;
             height: 6px;
-            background: var(--accent-color, #10b981);
+            background: var(--accent-color, #fbbf24);
             border-radius: 50%;
-            box-shadow: 0 0 8px var(--accent-color, #10b981);
+            box-shadow: 0 0 8px var(--accent-color, #fbbf24);
             transition: background 0.2s ease, box-shadow 0.2s ease;
         }
         
@@ -419,7 +450,7 @@
         }
         
         .detail-card[data-theme="trajectory"] {
-            --accent-color: #10b981;
+            --accent-color: #fbbf24;
         }
         
         .detail-card[data-theme="transformer"] {
@@ -770,19 +801,6 @@
             <span>View Comparison</span>
         </button>
         
-        <!-- Status Panel (Mechanism Mode) -->
-        <div id="status-panel">
-            <div class="status-indicator">
-                <div class="status-title">Refinement Progress</div>
-                <div class="status-bar">
-                    <div class="status-fill" id="processing-fill"></div>
-                </div>
-                <div class="status-info">
-                    <span id="processing-stage">Idle</span>
-                    <span id="processing-rate">0%</span>
-                </div>
-            </div>
-        </div>
         
         <!-- Labels Container -->
         <div class="labels-container" id="labels-container">
@@ -797,7 +815,7 @@
                 <span class="subtitle">Space of valid configurations</span>
             </div>
             
-            <div id="trajectory-label" class="label-bubble" style="border-left-color: #10b981;">
+            <div id="trajectory-label" class="label-bubble" style="border-left-color: #fbbf24;">
                 <strong>Refined Trajectory</strong>
                 <span class="subtitle">Smooth continuous motion</span>
             </div>
@@ -855,7 +873,7 @@
             <div class="parameter-control">
                 <div class="param-label">
                     <span>Noise Level σ</span>
-                    <span class="param-value" id="noise-value">0.50</span>
+                    <span class="param-value" id="noise-value">1.00</span>
                 </div>
                 <input type="range" class="slider" id="noise-slider" 
                        min="0.1" max="2.0" step="0.05" value="0.5">
@@ -919,6 +937,49 @@
     </div>
 
     <script type="module">
+        function playEnterAnimation(label, delaySec = 0) {
+            // 先清前一轮
+            label.classList.remove('entering', 'exiting', 'active');
+            label.style.animation = 'none';
+            // 触发回流确保能重启
+            // eslint-disable-next-line no-unused-expressions
+            label.offsetHeight;
+          
+            // 仅使用一条“唯一”的动画（把 delay 放进 animation 简写里）
+            // 这样就无需再去改 style.animationDelay
+            label.style.animation = `labelEnterRight 0.4s ease-out ${delaySec}s forwards`;
+          
+            // 动画结束后，自行清理 animation，避免后续被误触发
+            const onEnd = () => {
+              // label.style.animation = 'none';
+              label.removeEventListener('animationend', onEnd);
+            };
+            label.addEventListener('animationend', onEnd);
+          }
+
+        function playExitAnimation(label, delaySec = 0) {
+            // 让后续的 .exiting 动画能接管
+            label.classList.remove('entering', 'active');
+            label.style.animation = 'none';
+            // 触发一次回流
+            // eslint-disable-next-line no-unused-expressions
+            label.offsetHeight;
+            // 清掉内联 animation 声明，让类选择器生效
+            label.style.removeProperty('animation');
+          
+            // 用 CSS 里的 .exiting 触发退出动画
+            label.classList.add('exiting');
+          
+            const onEnd = () => {
+              label.classList.remove('exiting');
+              // 若需要动画后隐藏：
+              // label.style.display = 'none';
+              label.removeEventListener('animationend', onEnd);
+            };
+            label.addEventListener('animationend', onEnd);
+          }
+          
+          
         // ========== Moving Transformer Pipeline Class ==========
         class TransformerPipeline {
             constructor(scene, trajectoryCurve, noisyPoints) {
@@ -995,8 +1056,8 @@
                 
                 for (let i = 0; i < 30; i++) {
                     const material = new THREE.MeshPhongMaterial({
-                        color: 0x10b981,
-                        emissive: 0x10b981,
+                        color: 0xfff82e,
+                        emissive: 0xfff82e,
                         emissiveIntensity: 1.5,
                         transparent: true,
                         opacity: 0,
@@ -1095,7 +1156,7 @@
                     emissive: 0xa855f7,
                     emissiveIntensity: 0.8,
                     transparent: true,
-                    opacity: 0.6,
+                    opacity: 0.3,
                     shininess: 150,
                     side: THREE.FrontSide,
                     depthWrite: false
@@ -1106,10 +1167,10 @@
                     emissive: 0x7c3aed,
                     emissiveIntensity: 0.4,
                     transparent: true,
-                    opacity: 0.4,
+                    opacity: 0.3,
                     shininess: 100,
                     side: THREE.BackSide,
-                    depthWrite: false
+                    depthWrite: true
                 });
               
                 const outerTubeMesh = new THREE.Mesh(outerTubeGeometry, outerTubeMaterial);
@@ -1988,6 +2049,8 @@
             comparisonApp: null,
             isTransitioning: false,
             currentScene: null,
+            mechanismScene: null,
+            comparisonScene: null,
             renderer: null,
             camera: null,
             animationStates: {
@@ -1998,6 +2061,8 @@
                 grid: { current: 0.2, target: 0.2 }
             }
         };
+
+        appState.bindings = appState.bindings || { mechanism: false, comparison: false };
         
         // Shared renderer and camera setup
         function initSharedRenderer() {
@@ -2013,6 +2078,9 @@
                 logarithmicDepthBuffer: true
             });
             appState.renderer.setSize(width, height);
+            appState.renderer.setPixelRatio(window.devicePixelRatio || 1);
+            appState.renderer.autoClear = true;
+            appState.renderer.setClearColor(0x050508, 1); // 不透明清屏
             appState.renderer.shadowMap.enabled = false;
             appState.renderer.sortObjects = true;
             appState.renderer.physicallyCorrectLights = true;
@@ -2023,7 +2091,6 @@
         // Mode switching logic
         const modeSwitch = document.getElementById('mode-switch');
         const title = document.getElementById('title');
-        const statusPanel = document.getElementById('status-panel');
         const controlPanel = document.getElementById('control-panel');
         const legend = document.getElementById('legend');
         const labelsContainer = document.getElementById('labels-container');
@@ -2032,38 +2099,49 @@
         async function switchMode() {
             if (appState.isTransitioning) return;
             appState.isTransitioning = true;
+
+            const goToComparison = appState.currentMode === 'mechanism';
             
             // Start canvas fade
             canvasContainer.classList.add('switching');
             
             // Animate title
             title.classList.add('switching');
+
+            if (goToComparison) {
+                if (appState.mechanismApp) appState.mechanismApp.pause();
+                } else {
+                if (appState.comparisonApp) appState.comparisonApp.pause();
+                }
+            // 清一帧，防止上一帧留在缓冲里
+            if (appState.renderer) appState.renderer.clear(true, true, true);
             
-            // Hide current mode elements
-            if (appState.currentMode === 'mechanism') {
-                statusPanel.classList.add('hidden');
-                // Hide mechanism labels
-                document.querySelectorAll('.label-bubble:not(.algo-label)').forEach(label => {
-                    label.style.transition = 'all 0.3s ease';
-                    label.style.opacity = '0';
-                    label.style.transform = 'translateX(-30px)';
+            // Animate out current labels with enhanced animation
+            if (goToComparison) {
+                // Animate out mechanism labels
+                const mechanismLabels = document.querySelectorAll('.label-bubble:not(.algo-label)');
+                mechanismLabels.forEach((label, index) => {
+                    setTimeout(() => {
+                        playExitAnimation(label, index * 0.05);
+                    }, index * 50);
                 });
             } else {
                 controlPanel.classList.remove('visible');
                 legend.classList.remove('visible');
-                // Hide algorithm labels
-                document.querySelectorAll('.algo-label').forEach(label => {
-                    label.style.transition = 'all 0.3s ease';
-                    label.style.opacity = '0';
-                    label.style.transform = 'translateX(-30px)';
+                // Animate out algorithm labels
+                const algoLabels = document.querySelectorAll('.algo-label');
+                algoLabels.forEach((label, index) => {
+                    setTimeout(() => {
+                        playExitAnimation(label, index * 0.05);
+                    }, index * 50);
                 });
             }
             
-            // Wait for fade out
-            await new Promise(resolve => setTimeout(resolve, 400));
+            // Wait for exit animations
+            await new Promise(resolve => setTimeout(resolve, 600));
             
             // Switch mode
-            if (appState.currentMode === 'mechanism') {
+            if (goToComparison) {
                 appState.currentMode = 'comparison';
                 modeSwitch.textContent = 'Back to Mechanism';
                 title.classList.add('comparison-mode');
@@ -2073,36 +2151,28 @@
                 // Hide mechanism labels
                 document.querySelectorAll('.label-bubble:not(.algo-label)').forEach(label => {
                     label.style.display = 'none';
+                    label.classList.remove('exiting');
+                    label.classList.remove('entering');
                 });
                 
-                // Show algorithm labels
+                // Show and animate in algorithm labels
                 document.querySelectorAll('.algo-label').forEach((label, index) => {
                     label.style.display = 'block';
-                    label.style.opacity = '0';
-                    label.style.transform = 'translateX(-20px)';
-                    setTimeout(() => {
-                        label.style.transition = 'all 0.3s ease';
-                        label.style.opacity = '1';
-                        label.style.transform = 'translateX(0)';
-                    }, 100 * (index + 1));
+                    label.classList.remove('exiting');
+                    // Reset animation
+                    playEnterAnimation(label, index * 0.1);
                 });
                 
                 // Show comparison controls
                 setTimeout(() => {
                     controlPanel.classList.add('visible');
                     legend.classList.add('visible');
-                }, 200);
+                }, 400);
                 
-                // Initialize comparison app if needed
-                if (!appState.comparisonApp) {
-                    appState.comparisonApp = await initComparisonApp();
-                } else {
-                    appState.comparisonApp.resume();
-                }
                 
-                if (appState.mechanismApp) {
-                    appState.mechanismApp.pause();
-                }
+                appState.comparisonApp = appState.comparisonApp || await initComparisonApp();
+                appState.comparisonApp.resume();
+                
             } else {
                 appState.currentMode = 'mechanism';
                 modeSwitch.textContent = 'View Comparison';
@@ -2113,33 +2183,25 @@
                 // Hide algorithm labels
                 document.querySelectorAll('.algo-label').forEach(label => {
                     label.style.display = 'none';
+                    label.classList.remove('exiting');
+                    label.classList.remove('entering');
                 });
                 
-                // Show mechanism labels
-                document.querySelectorAll('.label-bubble:not(.algo-label)').forEach((label, index) => {
+                // Show and animate in mechanism labels
+                const mechanismLabels = document.querySelectorAll('.label-bubble:not(.algo-label)');
+                mechanismLabels.forEach((label, index) => {
                     label.style.display = 'block';
-                    label.style.opacity = '0';
-                    label.style.transform = 'translateX(-20px)';
-                    setTimeout(() => {
-                        label.style.transition = 'all 0.3s ease';
-                        label.style.opacity = '1';
-                        label.style.transform = 'translateX(0)';
-                    }, 100 * (index + 1));
+                    label.classList.remove('exiting');
+                    // Reset animation
+                    playEnterAnimation(label, index * 0.1);
                 });
                 
                 // Show mechanism controls
-                setTimeout(() => {
-                    statusPanel.classList.remove('hidden');
-                }, 200);
                 
                 if (appState.mechanismApp) {
                     appState.mechanismApp.resume();
                 } else {
                     appState.mechanismApp = await initMechanismApp();
-                }
-                
-                if (appState.comparisonApp) {
-                    appState.comparisonApp.pause();
                 }
             }
             
@@ -2156,7 +2218,11 @@
             // End transition
             setTimeout(() => {
                 appState.isTransitioning = false;
-            }, 600);
+                // Clean up animation classes
+                document.querySelectorAll('.label-bubble').forEach(label => {
+                    label.classList.remove('entering');
+                });
+            }, 1000);
         }
         
         modeSwitch.addEventListener('click', switchMode);
@@ -2393,6 +2459,8 @@
         
         // Initialize unified detail card system
         const detailCard = new UnifiedDetailCardSystem();
+
+        
         
         // Setup label interactions
         function setupLabelInteractions() {
@@ -2549,27 +2617,24 @@
             }
         }
 
+        // 在 setupLabelInteractions() 之后、initMechanismApp() 之前或之后均可：
+        requestAnimationFrame(() => {
+            document
+            .querySelectorAll('.label-bubble:not(.algo-label)')
+            .forEach((el, i) => playEnterAnimation(el, i * 0.1));
+        });
+        
+
         // ========== Mechanism App Code ==========
         async function initMechanismApp() {
-            if (appState.currentScene) {
-                // Clear the scene
-                while(appState.currentScene.children.length > 0) {
-                    const child = appState.currentScene.children[0];
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(mat => mat.dispose());
-                        } else {
-                            child.material.dispose();
-                        }
-                    }
-                    appState.currentScene.remove(child);
-                }
+            let scene = appState.mechanismScene;
+            if (!scene) {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x050508);
+                scene.fog = new THREE.Fog(0x050508, 50, 150);
+                appState.mechanismScene = scene;
+             // ——下面的物体、光源、网格等初始化代码保持不变——
             }
-            
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050508);
-            scene.fog = new THREE.Fog(0x050508, 50, 150);
             appState.currentScene = scene;
             
             // Camera setup
@@ -2594,7 +2659,7 @@
             pointLight.position.set(-15, 25, -15);
             scene.add(pointLight);
             
-            const pointLight2 = new THREE.PointLight(0x10b981, 20, 60, 2);
+            const pointLight2 = new THREE.PointLight(0xfff82e, 20, 60, 2);
             pointLight2.position.set(10, 20, 10);
             scene.add(pointLight2);
             
@@ -2715,8 +2780,8 @@
                 const segmentGeometry = new THREE.TubeGeometry(segmentCurve, 10, 0.3, 16, false);
                 
                 const segmentMaterial = new THREE.MeshPhongMaterial({
-                    color: 0x10b981,
-                    emissive: 0x10b981,
+                    color: 0xfff82e,
+                    emissive: 0xfff82e,
                     emissiveIntensity: 0.8,
                     transparent: true,
                     opacity: 0.7,
@@ -2787,8 +2852,8 @@
             // Create key points
             const keyPointsGroup = new THREE.Group();
             const keyPointMaterial = new THREE.MeshPhongMaterial({
-                color: 0x10b981,
-                emissive: 0x10b981,
+                color: 0xfff82e,
+                emissive: 0xfff82e,
                 emissiveIntensity: 1.2,
                 transparent: true,
                 opacity: 0.8,
@@ -2829,29 +2894,13 @@
             // Animation variables
             let isPlaying = true;
             let animationActive = true;
+            let rafId = null;
             let wavePosition = 0;
             let waveStartTime = performance.now();
             const waveSpeed = 0.0035;
             const gap = 0.12;
             const cycleLen = 1 + gap;
             
-            // Update processing status
-            function updateProcessingStatus(wavePosition, isPlaying) {
-                const stage = document.getElementById('processing-stage');
-                const rate = document.getElementById('processing-rate');
-                const fill = document.getElementById('processing-fill');
-                
-                if (isPlaying) {
-                    const effectivePosition = Math.min(wavePosition / 1, 1);
-                    stage.textContent = wavePosition > 1 ? 'Resetting' : 'Refining';
-                    rate.textContent = wavePosition > 1 ? 'Preparing...' : `${Math.round(effectivePosition * 100)}%`;
-                    fill.style.width = `${effectivePosition * 100}%`;
-                } else {
-                    stage.textContent = 'Paused';
-                    rate.textContent = `${Math.round(Math.min(wavePosition, 1) * 100)}%`;
-                    fill.style.width = `${Math.min(wavePosition, 1) * 100}%`;
-                }
-            }
             
             // Interactive rotation
             let isDragging = false;
@@ -2865,88 +2914,119 @@
             
             scene.rotation.x = initialRotation.x;
             scene.rotation.y = initialRotation.y;
-            
-            appState.renderer.domElement.addEventListener('mousedown', function(e) {
-                if (appState.currentMode !== 'mechanism') return;
-                isDragging = true;
-                autoRotation = false;
-                previousMousePosition = {
-                    x: e.clientX,
-                    y: e.clientY
-                };
-            });
-            
-            appState.renderer.domElement.addEventListener('mousemove', function(e) {
-                if (!isDragging || appState.currentMode !== 'mechanism') return;
-                
-                const deltaMove = {
-                    x: e.clientX - previousMousePosition.x,
-                    y: e.clientY - previousMousePosition.y
-                };
-                
-                scene.rotation.y += deltaMove.x * 0.01;
-                scene.rotation.x += deltaMove.y * 0.01;
-                scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
-                
-                previousMousePosition = {
-                    x: e.clientX,
-                    y: e.clientY
-                };
-            });
-            
-            appState.renderer.domElement.addEventListener('mouseup', function(e) {
-                isDragging = false;
-            });
-            
-            appState.renderer.domElement.addEventListener('mouseleave', function(e) {
-                isDragging = false;
-            });
-            
-            // Touch events
-            let touchStart = null;
-            
-            appState.renderer.domElement.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 1 && appState.currentMode === 'mechanism') {
+
+            // === 放在 initMechanismApp 内部，事件绑定之前 ===
+            const IDLE_RESTORE_MS = 3000;     // 交互结束 1.5s 后恢复
+            let idleTimerMech = null;
+
+            function smoothReturnRotation(target, duration = 3000) {
+            const startX = appState.currentScene.rotation.x;
+            const startY = appState.currentScene.rotation.y;
+            const t0 = performance.now();
+            (function tick(now){
+                const t = Math.min(1, (now - t0) / duration);
+                const e = t * t * (3 - 2 * t); // smoothstep
+                appState.currentScene.rotation.x = startX + (target.x - startX) * e;
+                appState.currentScene.rotation.y = startY + (target.y - startY) * e;
+                if (t < 1) requestAnimationFrame(tick);
+            })(t0);
+            }
+
+            function scheduleAutoRotateResume() {
+            if (idleTimerMech) clearTimeout(idleTimerMech);
+            idleTimerMech = setTimeout(() => {
+                autoRotation = true;                   // 恢复自动旋转
+                smoothReturnRotation(initialRotation); // 回到默认机位
+            }, IDLE_RESTORE_MS);
+            }
+
+            function kickMechanismRAF() {
+            if (appState.currentMode === 'mechanism') {
+                try { appState.mechanismApp?.resume?.(); } catch (e) {}
+            }
+            }
+
+            if (!appState.bindings.mechanism) {
+                // 鼠标
+                appState.renderer.domElement.addEventListener('mousedown', function(e) {
+                  if (appState.currentMode !== 'mechanism') return;
+                  isDragging = true;
+                  autoRotation = false;
+                  previousMousePosition = { x: e.clientX, y: e.clientY };
+                });
+              
+                appState.renderer.domElement.addEventListener('mousemove', function(e) {
+                  if (!isDragging || appState.currentMode !== 'mechanism') return;
+                  const deltaMove = { x: e.clientX - previousMousePosition.x, y: e.clientY - previousMousePosition.y };
+                  scene.rotation.y += deltaMove.x * 0.01;
+                  scene.rotation.x += deltaMove.y * 0.01;
+                  scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+                  previousMousePosition = { x: e.clientX, y: e.clientY };
+                });
+              
+                appState.renderer.domElement.addEventListener('mouseup', function() {
+                  isDragging = false;
+                  isPlaying = true;                 // 防止误触空格造成暂停
+                  scheduleAutoRotateResume();
+                  kickMechanismRAF();
+                });
+              
+                appState.renderer.domElement.addEventListener('mouseleave', function() {
+                  isDragging = false;
+                  scheduleAutoRotateResume();
+                  kickMechanismRAF();
+                });
+              
+                // 机制模式建议也监听一次 wheel（有缩放交互时同样恢复）
+                appState.renderer.domElement.addEventListener('wheel', function(e) {
+                  if (appState.currentMode !== 'mechanism') return;
+                  e.preventDefault();
+                  scheduleAutoRotateResume();
+                  kickMechanismRAF();
+                }, { passive: false });
+              
+                let touchStart = null;   // 机制只用到 touchStart
+
+                // 触摸
+                appState.renderer.domElement.addEventListener('touchstart', function(e) {
+                  if (e.touches.length === 1 && appState.currentMode === 'mechanism') {
                     isDragging = true;
                     autoRotation = false;
-                    touchStart = {
-                        x: e.touches[0].clientX,
-                        y: e.touches[0].clientY
-                    };
+                    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                     previousMousePosition = touchStart;
-                }
-            });
-            
-            appState.renderer.domElement.addEventListener('touchmove', function(e) {
-                if (!isDragging || !touchStart || appState.currentMode !== 'mechanism') return;
-                e.preventDefault();
-                
-                const touch = e.touches[0];
-                const deltaMove = {
-                    x: touch.clientX - previousMousePosition.x,
-                    y: touch.clientY - previousMousePosition.y
-                };
-                
-                scene.rotation.y += deltaMove.x * 0.01;
-                scene.rotation.x += deltaMove.y * 0.01;
-                scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
-                
-                previousMousePosition = {
-                    x: touch.clientX,
-                    y: touch.clientY
-                };
-            });
-            
-            // Space key to pause/play
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && appState.currentMode === 'mechanism') {
+                  }
+                });
+              
+                appState.renderer.domElement.addEventListener('touchmove', function(e) {
+                  if (!isDragging || !touchStart || appState.currentMode !== 'mechanism') return;
+                  e.preventDefault();
+                  const touch = e.touches[0];
+                  const deltaMove = { x: touch.clientX - previousMousePosition.x, y: touch.clientY - previousMousePosition.y };
+                  scene.rotation.y += deltaMove.x * 0.01;
+                  scene.rotation.x += deltaMove.y * 0.01;
+                  scene.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, scene.rotation.x));
+                  previousMousePosition = { x: touch.clientX, y: touch.clientY };
+                }, { passive: false });
+              
+                appState.renderer.domElement.addEventListener('touchend', function() {
+                  isDragging = false;
+                  scheduleAutoRotateResume();
+                  kickMechanismRAF();
+                });
+              
+                // Space 暂停/恢复 只绑定一次
+                document.addEventListener('keydown', (e) => {
+                  if (e.code === 'Space' && appState.currentMode === 'mechanism') {
                     e.preventDefault();
                     isPlaying = !isPlaying;
                     if (isPlaying) {
-                        waveStartTime = performance.now() - (wavePosition * 1000 / waveSpeed);
+                      waveStartTime = performance.now() - (wavePosition * 1000 / waveSpeed);
                     }
-                }
-            });
+                  }
+                });
+              
+                appState.bindings.mechanism = true;
+              }              
             
             const animationSpeed = 0.15;
             
@@ -2979,7 +3059,7 @@
             let time = 0;
             function animate() {
                 if (animationActive && appState.currentMode === 'mechanism') {
-                    requestAnimationFrame(animate);
+                    rafId = requestAnimationFrame(animate);
                 }
                 time += 0.01;
                 
@@ -3025,8 +3105,8 @@
                     if (segT < wavePosition - transformerPipeline.windowSize / 2) {
                         seg.visible = true;
                         const mat = segmentMaterials[i];
-                        lerpColor(mat.color, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
-                        lerpColor(mat.emissive, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                        lerpColor(mat.color, trajectoryFactor > 0.5 ? 0xfff82e : 0xffffff, animationSpeed);
+                        lerpColor(mat.emissive, trajectoryFactor > 0.5 ? 0xfff82e : 0xffffff, animationSpeed);
                         mat.opacity = lerp(mat.opacity, trajectoryFactor > 0.5 ? 0.7 : 0.2, animationSpeed);
                         mat.emissiveIntensity = lerp(mat.emissiveIntensity, trajectoryFactor > 0.5 ? 0.8 : 0.15, animationSpeed);
                     } else {
@@ -3039,8 +3119,8 @@
                     
                     if (sphereT < wavePosition - transformerPipeline.windowSize / 2) {
                         sphere.visible = true;
-                        lerpColor(sphere.material.color, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
-                        lerpColor(sphere.material.emissive, trajectoryFactor > 0.5 ? 0x10b981 : 0xffffff, animationSpeed);
+                        lerpColor(sphere.material.color, trajectoryFactor > 0.5 ? 0xfff82e : 0xffffff, animationSpeed);
+                        lerpColor(sphere.material.emissive, trajectoryFactor > 0.5 ? 0xfff82e : 0xffffff, animationSpeed);
                         sphere.material.emissiveIntensity = lerp(sphere.material.emissiveIntensity, trajectoryFactor > 0.5 ? 1.2 : 0.2, animationSpeed);
                         sphere.material.opacity = lerp(sphere.material.opacity, trajectoryFactor > 0.5 ? 0.8 : 0.3, animationSpeed);
                         
@@ -3101,8 +3181,8 @@
                 }
                 
                 // Update processing status
-                updateProcessingStatus(wavePosition, isPlaying);
                 
+                appState.renderer.clear(true, true, true);
                 appState.renderer.render(scene, appState.camera);
             }
             
@@ -3112,8 +3192,10 @@
             return {
                 pause: () => {
                     animationActive = false;
+                    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                 },
                 resume: () => {
+                    if (rafId) return; 
                     animationActive = true;
                     animate();
                 },
@@ -3124,25 +3206,14 @@
         
         // ========== Comparison App Code ==========
         async function initComparisonApp() {
-            if (appState.currentScene) {
-                // Clear the scene
-                while(appState.currentScene.children.length > 0) {
-                    const child = appState.currentScene.children[0];
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(mat => mat.dispose());
-                        } else {
-                            child.material.dispose();
-                        }
-                    }
-                    appState.currentScene.remove(child);
-                }
+            let scene = appState.comparisonScene;
+            if (!scene) {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x050508);
+                scene.fog = new THREE.Fog(0x050508, 50, 150);
+                appState.comparisonScene = scene;
+             // ——下面的物体、光源、网格等初始化代码保持不变——
             }
-            
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050508);
-            scene.fog = new THREE.Fog(0x050508, 50, 150);
             appState.currentScene = scene;
             
             // Lighting
@@ -3503,6 +3574,64 @@
             const cameraTarget = new THREE.Vector3(0, 10, 0);
             let autoRotateTime = 0;
             let autoRotate = true;
+            let restoringCam = false;
+
+            // === 放在 initComparisonApp 内部，camera 变量之后 ===
+            const defaultCam = { radius: 70, theta: Math.PI/4, phi: Math.PI/3 };
+            const IDLE_RESTORE_MS_CMP = 1500;
+            let idleTimerCmp = null;
+            const DRAG_THRESHOLD = 3;    // 像素
+            let pressing = false;        // 是否按下但未确认拖动
+            let didManipulate = false;   // 是否真的操控过相机（拖动/滚轮/双指缩放）
+
+
+            function smoothReturnCamera(duration = 900) {
+                restoringCam = true;            // 标记：正在复位
+                autoRotate   = false;           // 暂停自动旋转，避免覆盖插值
+              
+                const start = { r: cameraRadius, th: cameraTheta, ph: cameraPhi };
+                const end   = defaultCam;
+                const t0 = performance.now();
+              
+                (function tick(now){
+                  const t = Math.min(1, (now - t0) / duration);
+                  // 取更平滑的 easeInOutCubic
+                  const e = (t < 0.5) ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+                  cameraRadius = start.r  + (end.radius - start.r) * e;
+                  cameraTheta  = start.th + (end.theta  - start.th) * e;
+                  cameraPhi    = start.ph + (end.phi    - start.ph) * e;
+                  updateCameraPosition();
+              
+                  if (t < 1) {
+                    requestAnimationFrame(tick);
+                  } else {
+                    restoringCam = false;       // 复位完成
+                    autoRotate   = true;        // 现在再恢复自动旋转
+                    // 让自动旋转衔接顺滑（用当前 theta 作为起点）
+                    autoRotateTime = cameraTheta;
+                  }
+                })(t0);
+              }
+              
+            function scheduleCmpAutoResume() {
+                if (!didManipulate) {     // 没有操控过相机，不安排复位
+                    autoRotate = true;
+                    return;
+                }
+                if (idleTimerCmp) clearTimeout(idleTimerCmp);
+                idleTimerCmp = setTimeout(() => {
+                    smoothReturnCamera(900);
+                    didManipulate = false;  // 复位后清空
+                }, IDLE_RESTORE_MS_CMP);
+            }
+              
+
+            function kickComparisonRAF() {
+            if (appState.currentMode === 'comparison') {
+                try { appState.comparisonApp?.resume?.(); } catch (e) {}
+            }
+            }
+
             
             function updateCameraPosition() {
                 const x = cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
@@ -3517,112 +3646,142 @@
             let isDragging = false;
             let previousPosition = { x: 0, y: 0 };
             
-            appState.renderer.domElement.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-            });
-            
-            appState.renderer.domElement.addEventListener('mousedown', (e) => {
-                if (appState.currentMode !== 'comparison') return;
-                isDragging = true;
-                autoRotate = false;
-                previousPosition = { x: e.clientX, y: e.clientY };
-            });
-            
-            appState.renderer.domElement.addEventListener('mousemove', (e) => {
-                if (!isDragging || appState.currentMode !== 'comparison') return;
-                
-                const deltaMove = {
-                    x: e.clientX - previousPosition.x,
-                    y: e.clientY - previousPosition.y
-                };
-                
-                cameraTheta -= deltaMove.x * 0.005;
-                cameraPhi += deltaMove.y * 0.005;
-                
-                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
-                
-                updateCameraPosition();
-                
-                previousPosition = { x: e.clientX, y: e.clientY };
-            });
-            
-            appState.renderer.domElement.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-            
-            appState.renderer.domElement.addEventListener('mouseleave', () => {
-                isDragging = false;
-            });
-            
-            appState.renderer.domElement.addEventListener('wheel', (e) => {
-                if (appState.currentMode !== 'comparison') return;
-                e.preventDefault();
-                cameraRadius += e.deltaY * 0.02;
-                cameraRadius = Math.max(30, Math.min(120, cameraRadius));
-                updateCameraPosition();
-            });
-            
-            // Touch controls
-            let touchStart = null;
-            let initialDistance = null;
-            
-            appState.renderer.domElement.addEventListener('touchstart', (e) => {
-                if (appState.currentMode !== 'comparison') return;
-                e.preventDefault();
-                if (e.touches.length === 1) {
+            if (!appState.bindings.comparison) {
+                appState.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+              
+                appState.renderer.domElement.addEventListener('mousedown', (e) => {
+                  if (appState.currentMode !== 'comparison') return;
+                  pressing = true;
+                  isDragging = false;
+                  didManipulate = false;
+                  previousPosition = { x: e.clientX, y: e.clientY };
+                });
+              
+                appState.renderer.domElement.addEventListener('mousemove', (e) => {
+                    if (!pressing || appState.currentMode !== 'comparison') return;
+                    const dx = e.clientX - previousPosition.x;
+                    const dy = e.clientY - previousPosition.y;
+                    // 超过阈值才认为开始拖动，并暂停自动旋转
+                    if (!isDragging && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+                      isDragging = true;
+                      autoRotate = false;
+                      didManipulate = true;
+                    }
+                    if (isDragging) {
+                      cameraTheta -= dx * 0.005;
+                      cameraPhi   += dy * 0.005;
+                      cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
+                      updateCameraPosition();
+                      previousPosition = { x: e.clientX, y: e.clientY };
+                    }
+                });
+              
+                appState.renderer.domElement.addEventListener('mouseup', () => {
+                    if (pressing) {
+                      pressing = false;
+                      // 只有真的操作过相机才安排复位
+                      if (didManipulate || isDragging) {
+                        isDragging = false;
+                        scheduleCmpAutoResume();
+                      } else {
+                        // 只是点了一下，不动相机：保持当前自动旋转状态
+                        autoRotate = true;
+                      }
+                      kickComparisonRAF();
+                    }
+                });
+              
+                appState.renderer.domElement.addEventListener('mouseleave', () => {
+                    if (!pressing) return;
+                    pressing = false;
+                    if (didManipulate || isDragging) {
+                      isDragging = false;
+                      scheduleCmpAutoResume();
+                    }
+                    kickComparisonRAF();
+                });
+              
+                appState.renderer.domElement.addEventListener('wheel', (e) => {
+                  if (appState.currentMode !== 'comparison') return;
+                  e.preventDefault();
+                  autoRotate = false;
+                  didManipulate = true;
+                  cameraRadius += e.deltaY * 0.02;
+                  cameraRadius = Math.max(30, Math.min(120, cameraRadius));
+                  updateCameraPosition();
+                  scheduleCmpAutoResume();
+                  kickComparisonRAF();
+                }, { passive: false });
+              
+                let touchStart = null;
+                let initialDistance = null;
+
+                // touch
+                appState.renderer.domElement.addEventListener('touchstart', (e) => {
+                  if (appState.currentMode !== 'comparison') return;
+                  e.preventDefault();
+                  if (e.touches.length === 1) {
                     isDragging = true;
                     autoRotate = false;
-                    touchStart = {
-                        x: e.touches[0].clientX,
-                        y: e.touches[0].clientY
-                    };
+                    pressing = true;
+                    isDragging = false;
+                    didManipulate = false;
+                    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                     previousPosition = touchStart;
-                } else if (e.touches.length === 2) {
+                  } else if (e.touches.length === 2) {
                     const dx = e.touches[0].clientX - e.touches[1].clientX;
                     const dy = e.touches[0].clientY - e.touches[1].clientY;
                     initialDistance = Math.sqrt(dx * dx + dy * dy);
-                }
-            });
-            
-            appState.renderer.domElement.addEventListener('touchmove', (e) => {
-                if (appState.currentMode !== 'comparison') return;
-                e.preventDefault();
-                
-                if (e.touches.length === 1 && isDragging && touchStart) {
+                    autoRotate = false;
+                    didManipulate = true;
+                  }
+                }, { passive: false });
+              
+                appState.renderer.domElement.addEventListener('touchmove', (e) => {
+                  if (appState.currentMode !== 'comparison') return;
+                  e.preventDefault();
+                  if (e.touches.length === 1 && isDragging && touchStart) {
                     const touch = e.touches[0];
-                    const deltaMove = {
-                        x: touch.clientX - previousPosition.x,
-                        y: touch.clientY - previousPosition.y
-                    };
-                    
-                    cameraTheta -= deltaMove.x * 0.005;
-                    cameraPhi += deltaMove.y * 0.005;
-                    cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
-                    
-                    updateCameraPosition();
-                    
-                    previousPosition = {
-                        x: touch.clientX,
-                        y: touch.clientY
-                    };
-                } else if (e.touches.length === 2 && initialDistance) {
+                    const deltaMove = { x: touch.clientX - previousPosition.x, y: touch.clientY - previousPosition.y };
+                    if (!isDragging && (Math.abs(deltaMove.x) > DRAG_THRESHOLD || Math.abs(deltaMove.y) > DRAG_THRESHOLD)) {
+                        isDragging = true;
+                        autoRotate = false;
+                        didManipulate = true;
+                    }
+                    if (isDragging) {
+                        cameraTheta -= deltaMove.x * 0.005;
+                        cameraPhi   += deltaMove.y * 0.005;
+                        cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
+                        updateCameraPosition();
+                        previousPosition = { x: touch.clientX, y: touch.clientY };
+                    }
+                  } else if (e.touches.length === 2 && initialDistance) {
                     const dx = e.touches[0].clientX - e.touches[1].clientX;
                     const dy = e.touches[0].clientY - e.touches[1].clientY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     const scale = distance / initialDistance;
-                    
                     cameraRadius = Math.max(30, Math.min(120, cameraRadius / scale));
                     updateCameraPosition();
-                    
                     initialDistance = distance;
-                }
-            });
-            
-            appState.renderer.domElement.addEventListener('touchend', () => {
-                isDragging = false;
-                touchStart = null;
-                initialDistance = null;
-            });
+                  }
+                }, { passive: false });
+              
+                appState.renderer.domElement.addEventListener('touchend', () => {
+                    isDragging = false;
+                    pressing = false;
+                    touchStart = null;
+                    initialDistance = null;
+                    if (didManipulate) {
+                      scheduleCmpAutoResume();
+                    } else {
+                      autoRotate = true;
+                    }
+                    kickComparisonRAF();
+                });
+              
+                appState.bindings.comparison = true;
+              }
+              
             
             // UI Controls
             const lambdaSlider = document.getElementById('lambda-slider');
@@ -3641,7 +3800,17 @@
                 generateData();
             });
             
-            const sceneButtons = document.querySelectorAll('#comparison-page .scene-button');
+            const winSlider = document.getElementById('win-slider');
+            const winValue = document.getElementById('win-value');
+            winSlider.addEventListener('input', (e) => {
+                config.winSize = parseInt(e.target.value);
+                winValue.textContent = config.winSize;
+                if (config.currentAlgo === 'HPSTM') {
+                    computeRefinedData();
+                }
+            });
+            
+            const sceneButtons = document.querySelectorAll('.scene-button');
             sceneButtons.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     sceneButtons.forEach(b => b.classList.remove('active'));
@@ -3657,19 +3826,28 @@
             
             // Animation
             let animationActive = true;
+            let rafId = null;
             
             function animate() {
                 if (animationActive && appState.currentMode === 'comparison') {
-                    requestAnimationFrame(animate);
+                    rafId = requestAnimationFrame(animate);
                     
                     // Auto-rotate camera
-                    if (autoRotate) {
-                        autoRotateTime += 0.002;
-                        cameraTheta = autoRotateTime;
-                        cameraPhi = Math.PI / 3;
-                        cameraRadius = 70 + Math.sin(autoRotateTime * 2) * 3;
-                        updateCameraPosition();
+                    // Auto-rotate camera (smooth towards targets to avoid radius jump)
+                    if (autoRotate && !restoringCam) {
+                      const AR_SPEED = 0.002;
+                      const SMOOTH   = 0.08;    // 缓动系数，越大越跟手
+                      autoRotateTime += AR_SPEED;
+                      const targetTheta  = autoRotateTime;
+                      const targetPhi    = Math.PI / 3;
+                      const targetRadius = defaultCam.radius + Math.sin(autoRotateTime * 2) * 3;
+                    
+                      cameraTheta  += (targetTheta  - cameraTheta)  * SMOOTH;
+                      cameraPhi    += (targetPhi    - cameraPhi)    * SMOOTH;
+                      cameraRadius += (targetRadius - cameraRadius) * SMOOTH;
+                      updateCameraPosition();
                     }
+
                     
                     // Animate noisy points
                     const time = Date.now() * 0.001;
@@ -3685,7 +3863,7 @@
                         const targetIntensity = config.currentAlgo === 'HPSTM' ? 0.8 : 0.2;
                         hpstmLight.intensity += (targetIntensity - hpstmLight.intensity) * 0.1;
                     }
-                    
+                    appState.renderer.clear(true, true, true);
                     appState.renderer.render(scene, appState.camera);
                 }
             }
@@ -3696,8 +3874,10 @@
             return {
                 pause: () => {
                     animationActive = false;
+                    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                 },
                 resume: () => {
+                    if (rafId) return;  
                     animationActive = true;
                     animate();
                 },
