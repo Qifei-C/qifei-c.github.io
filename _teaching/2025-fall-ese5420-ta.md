@@ -1,14 +1,14 @@
 ---
-title: "Teaching Assistant – ESE 5420 Statistics for Data Science"
+title: "Graduate Teaching Assistant – ESE 5420 Statistics for Data Science"
 collection: teaching
 type: "Graduate Course"
 permalink: /teaching/2025-fall-ese5420-ta
 venue: "University of Pennsylvania, ESE Dept."
-date: 2025-08-27 
+date: 2025-08-25
 location: "Philadelphia, PA, USA"
 ---
 
-I will serve as a graduate TA for ESE 5420 Statistics for Data Science in Fall 2025.
+I serves as a graduate TA for ESE 5420 Statistics for Data Science in Fall 2025.
 
 ### Office Hours
 

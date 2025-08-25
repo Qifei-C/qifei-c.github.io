@@ -1,18 +1,18 @@
 ---
-title: "Teaching Assistant – ESE 5460: Deep Learning Principle"
+title: "Graduate Teaching Assistant – ESE 5460: Deep Learning Principle"
 collection: teaching
 type: "Graduate Course"
 permalink: /teaching/2025-fall-ese5460-ta
 venue: "University of Pennsylvania, ESE Dept."
-date: 2025-08-27 
+date: 2025-08-25
 location: "Philadelphia, PA, USA"
 ---
 
-I will serve as a graduate TA for ESE 5460 Deep Learning Principle in Fall 2025.
+I serves as a graduate TA for ESE 5460 Deep Learning Principle in Fall 2025.
 
 ### Office Hours
 
-- **Time:** TBA  
+- **Time:** Tue 1:00-2:00 PM  
 - **Location:** TBA
 
 ### Quick Policies

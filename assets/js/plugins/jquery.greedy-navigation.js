@@ -39,8 +39,8 @@ function updateNav() {
     // There is space for another item in the nav
     while (breaks.length > 0 && availableSpace > breaks[breaks.length - 1]) {
       // Move the item to the visible list
-      if ($vlinks_persist_tail.children().length > 0) {
-        $hlinks.children().first().insertBefore($vlinks_persist_tail);
+      if ($vlinks_persist_tail.length > 0) {
+        $hlinks.children().first().insertBefore($vlinks_persist_tail.first());
       } else {
         $hlinks.children().first().appendTo($vlinks);
       }

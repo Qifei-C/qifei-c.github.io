@@ -1,5 +1,5 @@
 ---
-title: "Teaching Assistant – ESE 6500: Learning in Robotics"
+title: "Graduate Teaching Assistant – ESE 6500: Learning in Robotics"
 collection: teaching
 type: "Graduate Course"
 permalink: /teaching/2026-spring-ese6500-ta
