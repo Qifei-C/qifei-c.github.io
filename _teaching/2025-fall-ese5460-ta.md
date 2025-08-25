@@ -5,6 +5,7 @@ type: "Graduate Course"
 permalink: /teaching/2025-fall-ese5460-ta
 venue: "University of Pennsylvania, ESE Dept."
 date: 2025-08-25
+end_date: 2025-12-15
 location: "Philadelphia, PA, USA"
 ---
 

@@ -10,16 +10,28 @@ author_profile: true
 {% assign sorted_teaching = site.teaching | sort: 'date' %}
 {% assign today = 'now' | date: '%s' %}
 {% assign upcoming = '' | split: '' %}
+{% assign ongoing = '' | split: '' %}
 {% assign past = '' | split: '' %}
 
 {% for post in sorted_teaching %}
   {% assign post_date = post.date | date: '%s' %}
-  {% if post_date >= today %}
+  {% assign post_end_date = post.end_date | date: '%s' %}
+  
+  {% if post_date > today %}
     {% assign upcoming = upcoming | push: post %}
+  {% elsif post_end_date and post_end_date >= today %}
+    {% assign ongoing = ongoing | push: post %}
   {% else %}
     {% assign past = past | push: post %}
   {% endif %}
 {% endfor %}
+
+{% if ongoing.size > 0 %}
+<h2>Ongoing Courses</h2>
+{% for post in ongoing %}
+  {% include archive-single.html %}
+{% endfor %}
+{% endif %}
 
 {% if upcoming.size > 0 %}
 <h2>Upcoming Courses</h2>

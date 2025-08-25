@@ -4,7 +4,8 @@ collection: teaching
 type: "Graduate Course"
 permalink: /teaching/2026-spring-ese6500-ta
 venue: "University of Pennsylvania, ESE Dept."
-date: 2026-01-15 
+date: 2026-01-15
+end_date: 2026-05-15
 location: "Philadelphia, PA, USA"
 ---
 
